@@ -1802,7 +1802,7 @@ function renderAiResponse(content){
     }
     if(v==='openrouter'&&!localStorage.getItem('ai_or_model')){
       const orSel=document.getElementById('ai-or-model');
-      if(orSel) orSel.value='deepseek/deepseek-r1:free';
+      if(orSel) orSel.value='meta-llama/llama-3.3-70b-instruct:free';
     }
   }
   if(sel) sel.addEventListener('change',toggleFields);
@@ -1905,7 +1905,7 @@ function escapeHtml(s){
 }
 function totoBigInt(v){
   if(typeof v==='bigint') return v;
-  try{return globalThis.toBigInt(v)}catch{return 0n}
+  try{return globalThis.BigInt(v)}catch{return 0n}
 }
 
 // =============================================

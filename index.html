@@ -907,14 +907,20 @@ The solver will detect the type and try to decode/solve it."></textarea>
                   <div class="field" id="ai-or-model-field" style="display:none">
                     <label>OpenRouter Model</label>
                     <select id="ai-or-model">
-                      <option value="deepseek/deepseek-r1:free" selected>DeepSeek R1 (free, strongest)</option>
-                      <option value="google/gemini-2.0-flash-thinking-exp:free">Gemini 2.0 Flash Thinking (free)</option>
-                      <option value="mistralai/mistral-small-3.1-24b-instruct:free">Mistral Small 3.1 (free)</option>
-                      <option value="qwen/qwq-32b:free">QwQ 32B (free, strong reasoning)</option>
-                      <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (paid)</option>
-                      <option value="openai/gpt-4o">GPT-4o (paid)</option>
-                      <option value="deepseek/deepseek-r1">DeepSeek R1 (paid, unlimited)</option>
-                      <option value="deepseek/deepseek-chat">DeepSeek V3 (cheap, fast)</option>
+                      <optgroup label="✅ Free Models">
+                        <option value="meta-llama/llama-3.3-70b-instruct:free" selected>Llama 3.3 70B (free, strong for CTF)</option>
+                        <option value="deepseek/deepseek-v4-flash:free">DeepSeek V4 Flash (free, fast reasoning)</option>
+                        <option value="qwen/qwen3-coder:free">Qwen 3 Coder (free, great for code)</option>
+                        <option value="nousresearch/hermes-3-llama-3.1-405b:free">Hermes 3 405B (free, strongest free)</option>
+                        <option value="liquid/lfm-2.5-1.2b-thinking:free">LFM 1.2B Thinking (free, reasoning)</option>
+                      </optgroup>
+                      <optgroup label="💰 Paid Models (need credits)">
+                        <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                        <option value="openai/gpt-4o">GPT-4o</option>
+                        <option value="deepseek/deepseek-r1">DeepSeek R1 (unlimited)</option>
+                        <option value="deepseek/deepseek-chat">DeepSeek V3 (cheap, fast)</option>
+                        <option value="google/gemini-2.0-flash-thinking-exp">Gemini 2.0 Flash Thinking</option>
+                      </optgroup>
                     </select>
                   </div>
                   <div class="field" id="ai-custom-url-field" style="display:none">
