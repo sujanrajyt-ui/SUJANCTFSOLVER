@@ -1740,6 +1740,7 @@ function agentRenderLog(){
   }
   html+='</div>';
   el.innerHTML=html;
+  window.deepDecode=deepDecode;
 }
 
 async function agentSolve(){
@@ -1903,6 +1904,180 @@ async function agentSolve(){
   agentRenderLog();
   agentLogMsg('✅ Agent complete. Scroll through the steps above to see what was found.','');
   agentRenderLog();
+}
+
+// =============================================
+// Real Solver — connects to servers, decodes data, finds flags
+// =============================================
+let solveLog=[];
+function solveLogMsg(step,detail,type){
+  solveLog.push({step,detail,type:type||'info'});
+}
+function solveRenderLog(){
+  const el=document.getElementById('ai-response');
+  let html='<div class="agent-report" style="margin-top:8px">';
+  html+='<div class="agent-header" style="padding:10px 14px;background:var(--bg-tertiary);border-radius:6px;margin-bottom:8px;font-size:.9rem;font-weight:bold">🚀 Solver Engine — Results</div>';
+  for(const entry of solveLog){
+    const icons={info:'⚙️',success:'✅',warn:'⚠️',error:'❌',flag:'🏴',data:'📦',connect:'🔌',decode:'🔓',ai:'🤖'};
+    const icon=icons[entry.type]||'⚙️';
+    const bg={info:'rgba(255,255,255,.02)',success:'rgba(0,255,136,.05)',warn:'rgba(255,193,7,.05)',error:'rgba(255,107,107,.05)',flag:'rgba(255,215,0,.08)',data:'rgba(0,206,201,.05)',connect:'rgba(108,92,231,.05)',decode:'rgba(0,184,255,.05)',ai:'rgba(255,255,255,.03)'};
+    html+=`<div class="agent-step" style="padding:5px 10px;margin:2px 0;background:${bg[entry.type]||bg.info};border-radius:4px;font-size:.78rem">`;
+    html+=`<span>${icon}</span> <strong>${escapeHtml(entry.step)}</strong>`;
+    if(entry.detail){
+      const maxH=entry.type==='data'?'300px':'150px';
+      html+=`<div style="padding:6px 10px;margin:4px 0;background:rgba(0,0,0,.3);border-radius:3px;font-family:var(--font-mono);font-size:.72rem;color:var(--text-secondary);white-space:pre-wrap;overflow-y:auto;max-height:${maxH}">${escapeHtml(entry.detail)}</div>`;
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+async function solveChallenge(){
+  const input=document.getElementById('ai-input').value.trim();
+  if(!input){showToast('Enter a challenge connection string or data','warn');return}
+  solveLog=[];
+  solveLogMsg('Solver Engine started','Parsing input...','info');
+  solveRenderLog();
+
+  // Phase 1: Parse input — detect if it's a server connection
+  let challengeText=input;
+  const connMatch=input.match(/(?:nc|ncat|netcat|connect)\s+([a-zA-Z0-9._-]+(?:\.[a-zA-Z]{2,}))\s+(\d{1,5})/i);
+  const addrMatch=input.match(/^([a-zA-Z0-9._-]+(?:\.[a-zA-Z]{2,}))\s+(\d{1,5})$/m);
+  const bareMatch=input.match(/([a-zA-Z0-9._-]+\.[a-zA-Z]{2,})\s*[:\s]\s*(\d{1,5})/);
+  const match=connMatch||addrMatch||bareMatch;
+
+  if(match){
+    const host=match[1]; const port=match[2];
+    solveLogMsg('🔌 Connecting to '+host+':'+port,'Attempting TCP connection via server...','connect');
+    solveRenderLog();
+    try{
+      const res=await fetch('/api/connect',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({host,port,timeout:15000})
+      });
+      const data=await res.json();
+      if(data.success&&data.data){
+        challengeText=data.data;
+        solveLogMsg('📦 Received '+(data.data.length)+' bytes from server',data.data.trim().substring(0,2000),'data');
+      }else{
+        solveLogMsg('⚠️ Server connection: '+ (data.note||'empty response'),'Using original input text instead','warn');
+      }
+    }catch(e){
+      solveLogMsg('❌ Connection failed: '+e.message,'Falling back to input text','error');
+    }
+    solveRenderLog();
+  }else{
+    solveLogMsg('ℹ️ No server address detected — analyzing as raw text',challengeText.substring(0,500),'info');
+    solveRenderLog();
+  }
+
+  // Phase 2: Run Smart Analyzer on the data
+  solveLogMsg('🔍 Running decoder pipeline...','','info');
+  solveRenderLog();
+  const autoInput=document.getElementById('auto-input');
+  const autoResults=document.getElementById('auto-results');
+  if(autoInput&&autoResults){
+    autoInput.value=challengeText;
+    clearAnalyzer();
+    autoSolve();
+    await new Promise(r=>setTimeout(r,300));
+    const findings=[];
+    autoResults.querySelectorAll('.auto-step').forEach(el=>{
+      const title=el.querySelector('.auto-step-title')?.textContent||'';
+      const body=el.querySelector('.auto-step-body')?.textContent||'';
+      if(body) findings.push({title,body});
+    });
+    for(const f of findings){
+      solveLogMsg(f.title,f.body.substring(0,800),f.title.includes('Flag')||f.body.includes('flag{')||f.body.includes('FLAG')?'flag':f.title.includes('Error')?'error':f.title.includes('Found')?'success':'decode');
+      // Check for flag pattern
+      const flagMatch=f.body.match(/(?:picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);
+      if(flagMatch) solveLogMsg('🏴 FLAG FOUND!',flagMatch[0],'flag');
+    }
+    solveRenderLog();
+  }
+
+  // Phase 3: Run additional decoders on the raw data
+  const decodedResults=[];
+  const lines=challengeText.split('\n').filter(l=>l.trim());
+  for(const line of lines){
+    const t=line.trim();
+    if(!t||t.length<4) continue;
+    // Base64
+    if(/^[A-Za-z0-9+/]*={0,2}$/.test(t)&&t.length%4===0&&t.length>10){
+      try{
+        const d=atob(t);
+        if(/[a-zA-Z]{4,}/.test(d)){
+          decodedResults.push({type:'Base64',input:t.substring(0,60),output:d.substring(0,500)});
+          const flag=d.match(/(?:picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);
+          if(flag) solveLogMsg('🏴 FLAG FOUND in Base64!',flag[0],'flag');
+        }
+      }catch(e){}
+    }
+    // Hex
+    if(/^[0-9a-fA-F]+$/.test(t)&&t.length%2===0&&t.length>4){
+      try{
+        const d=t.match(/.{1,2}/g).map(b=>String.fromCharCode(parseInt(b,16))).join('');
+        if(/[a-zA-Z0-9\s]{4,}/.test(d)){
+          decodedResults.push({type:'Hex',input:t.substring(0,60),output:d.substring(0,500)});
+          const flag=d.match(/(?:picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);
+          if(flag) solveLogMsg('🏴 FLAG FOUND in Hex!',flag[0],'flag');
+        }
+      }catch(e){}
+    }
+    // ROT brute
+    if(/^[a-zA-Z\s.!?,'-]+$/.test(t)&&t.length>5){
+      for(let s=1;s<26;s++){
+        const r=t.split('').map(c=>{
+          if(c>='a'&&c<='z') return String.fromCharCode((c.charCodeAt(0)-97+s)%26+97);
+          if(c>='A'&&c<='Z') return String.fromCharCode((c.charCodeAt(0)-65+s)%26+65);
+          return c;
+        }).join('');
+        if(/(flag|ctf|pico|the |this |is |are |was |for |and |not |you |can |key |has |cipher|encrypt|decrypt|password|admin|user|login|secret)/i.test(r)){
+          decodedResults.push({type:'ROT'+s,input:t.substring(0,60),output:r.substring(0,500)});
+          const flag=r.match(/(?:picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);
+          if(flag) solveLogMsg('🏴 FLAG FOUND in ROT'+s+'!',flag[0],'flag');
+          break;
+        }
+      }
+    }
+  }
+
+  if(decodedResults.length>0){
+    for(const r of decodedResults){
+      solveLogMsg('🔓 '+r.type+' → decoded',r.output,'decode');
+    }
+  }
+
+  // Phase 4: Deep chain decode
+  for(const line of lines){
+    const t=line.trim();
+    if(!t||t.length<4) continue;
+    try{
+      const chainResult=window.deepDecode(t);
+      if(chainResult){
+        solveLogMsg('🔓 Deep chain decoded',chainResult.substring(0,500),'decode');
+        const flag=chainResult.match(/(?:picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);
+        if(flag) solveLogMsg('🏴 FLAG FOUND in deep chain!',flag[0],'flag');
+      }
+    }catch(e){}
+  }
+
+  solveRenderLog();
+
+  // Phase 5: Summary
+  const allFlags=[];
+  solveLog.forEach(e=>{const m=e.detail.match(/(picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);if(m) allFlags.push(m[0])});
+  if(allFlags.length>0){
+    solveLogMsg('🏴 SOLVED! Flags found: '+allFlags.length,allFlags.join('\n'),'flag');
+  }else{
+    solveLogMsg('ℹ️ No flag detected in decoded data. The server may require interaction.','Try connecting manually with python/pwntools or use the AI to analyze further.','info');
+    solveLogMsg('💡 Tip: Install pwntools and run: python -c "from pwn import *; io=remote(\''+(match?match[1]:'host')+'\','+(match?match[2]:'port')+'); print(io.recvall().decode())"  then pipe back responses.','','info');
+  }
+  solveRenderLog();
+  solveLogMsg('✅ Solver complete','','success');
+  solveRenderLog();
 }
 
 async function autoAISolve(){

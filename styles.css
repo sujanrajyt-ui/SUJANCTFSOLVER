@@ -626,6 +626,8 @@ body{
 }
 .autosolver-input-area textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,255,136,.1)}
 .autosolver-actions{display:flex;gap:.6rem;margin-top:.6rem}
+.btn-solve{background:rgba(255,165,0,.15);border-color:#ffa500;font-size:.78rem;padding:.6rem 1.4rem}
+.btn-solve:hover{background:rgba(255,165,0,.25);box-shadow:0 0 16px rgba(255,165,0,.15)}
 .btn-auto{background:rgba(0,255,136,.12);border-color:var(--accent);font-size:.78rem;padding:.6rem 1.4rem}
 .btn-auto:hover{background:rgba(0,255,136,.2);box-shadow:0 0 16px rgba(0,255,136,.15)}
 .btn-agent{background:rgba(108,92,231,.12);border-color:var(--purple);font-size:.78rem;padding:.6rem 1.4rem}
