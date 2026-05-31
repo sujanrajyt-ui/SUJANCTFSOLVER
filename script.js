@@ -1613,7 +1613,12 @@ function handleFiles(files){
       reader.onload=()=>{
         const ta=document.getElementById('ai-input');
         const sep=ta.value?'\n\n--- '+file.name+' ---\n\n':'';
-        ta.value+=sep+reader.result;
+        let content=reader.result;
+        if(content.length>100000){
+          content=content.substring(0,100000)+'\n\n[--- truncated at 100K chars ---]';
+          showToast(`${file.name}: truncated to 100K chars`,'warn');
+        }
+        ta.value+=sep+content;
         ta.dispatchEvent(new Event('input'));
       };
       reader.readAsText(file);
@@ -1660,8 +1665,12 @@ async function autoAISolve(){
   if(keyInput) localStorage.setItem('ai_api_key',keyInput);
   localStorage.setItem('ai_provider',provider);
 
-  const problem=document.getElementById('ai-input').value.trim();
+  let problem=document.getElementById('ai-input').value.trim();
   if(!problem){showToast('Enter a CTF problem','warn');return}
+  if(problem.length>120000){
+    problem=problem.substring(0,120000)+'\n\n[--- truncated: input too large, showing first 120K chars ---]';
+    showToast('Input truncated to 120K characters','warn');
+  }
 
   const responseEl=document.getElementById('ai-response');
   responseEl.innerHTML=`<div class="auto-placeholder"><div class="ai-thinking">🤖 AI is analyzing your problem...</div></div>`;
@@ -1951,6 +1960,10 @@ function execCommand(cmd){
 }
 
 function terminalAI(prompt){
+  if(prompt.length>120000){
+    prompt=prompt.substring(0,120000)+'\n\n[--- truncated: input too large, showing first 120K chars ---]';
+    appendTermLine('[AI] Input truncated to 120K characters','term-warn');
+  }
   appendTermLine('[AI] Querying AI...','term-muted');
   const provider=document.getElementById('ai-provider')?.value||'backend';
   const key=localStorage.getItem('ai_api_key')||'';
