@@ -1641,11 +1641,11 @@ async function apiFetch(url,opts,timeoutMs=60000){
   }
 }
 
-async function callBackendAI(problem,provider='openrouter',model=''){
+async function callBackendAI(problem,provider='openrouter'){
   const res=await fetch('/api/solve',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({problem,provider,model})
+    body:JSON.stringify({problem,provider})
   });
   const data=await res.json();
   if(!data.success) throw new Error(data.error||'Backend AI failed');
