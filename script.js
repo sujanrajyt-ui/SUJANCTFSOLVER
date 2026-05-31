@@ -1589,7 +1589,7 @@ async function autoAISolve(){
   const savedKey=localStorage.getItem('ai_api_key');
   const key=keyInput||savedKey;
 
-  if(!key){showToast('Enter your API key first','warn');return}
+  if(provider!=='backend'&&!key){showToast('Enter your API key first','warn');return}
 
   // Save fields
   if(keyInput) localStorage.setItem('ai_api_key',keyInput);
@@ -1603,7 +1603,10 @@ async function autoAISolve(){
 
   try{
     let content;
-    if(provider==='openrouter'){
+    if(provider==='backend'){
+      const bm=document.getElementById('ai-backend-model')?.value||'openrouter';
+      content=await callBackendAI(problem,bm);
+    }else if(provider==='openrouter'){
       content=await callOpenRouter(key,problem);
     }else if(provider==='groq'){
       content=await callGroq(key,problem);
@@ -1636,6 +1639,17 @@ async function apiFetch(url,opts,timeoutMs=60000){
     if(e.name==='AbortError') throw new Error('Request timed out after '+(timeoutMs/1000)+'s');
     throw e;
   }
+}
+
+async function callBackendAI(problem,provider='openrouter',model=''){
+  const res=await fetch('/api/solve',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({problem,provider,model})
+  });
+  const data=await res.json();
+  if(!data.success) throw new Error(data.error||'Backend AI failed');
+  return data.content;
 }
 
 async function callOpenRouter(key,problem){
@@ -1779,26 +1793,35 @@ function renderAiResponse(content){
   if(savedOrModel){const el=document.getElementById('ai-or-model');if(el) el.value=savedOrModel}
 
   const sel=document.getElementById('ai-provider');
+  const backendField=document.getElementById('ai-backend-model-field');
   const orField=document.getElementById('ai-or-model-field');
   const custUrlField=document.getElementById('ai-custom-url-field');
   const custModelField=document.getElementById('ai-custom-model-field');
   const infoBox=document.getElementById('ai-provider-info');
+  const keyRow=document.getElementById('ai-key-row');
   function toggleFields(){
     const v=sel?.value;
+    if(backendField) backendField.style.display=v==='backend'?'block':'none';
     if(orField) orField.style.display=v==='openrouter'?'block':'none';
     if(custUrlField) custUrlField.style.display=v==='custom'?'block':'none';
     if(custModelField) custModelField.style.display=v==='custom'?'block':'none';
     if(infoBox) infoBox.style.display='block';
     const keyEl=document.getElementById('ai-api-key');
     if(keyEl){
-      const phs={
-        openrouter:'Get free key at https://openrouter.ai/keys',
-        groq:'Get free key at https://console.groq.com/keys',
-        gemini:'Get free key at https://aistudio.google.com/apikey',
-        openai:'sk-... your OpenAI API key',
-        custom:'API key (if required)'
-      };
-      keyEl.placeholder=phs[v]||'API key';
+      if(v==='backend'){
+        keyEl.placeholder='No key needed — uses server keys';
+        keyEl.disabled=true;
+      }else{
+        keyEl.disabled=false;
+        const phs={
+          openrouter:'Get free key at https://openrouter.ai/keys',
+          groq:'Get free key at https://console.groq.com/keys',
+          gemini:'Get free key at https://aistudio.google.com/apikey',
+          openai:'sk-... your OpenAI API key',
+          custom:'API key (if required)'
+        };
+        keyEl.placeholder=phs[v]||'API key';
+      }
     }
     if(v==='openrouter'&&!localStorage.getItem('ai_or_model')){
       const orSel=document.getElementById('ai-or-model');

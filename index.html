@@ -888,13 +888,14 @@ The solver will detect the type and try to decode/solve it."></textarea>
                 <div class="ai-solver-config">
                   <div class="field">
                     <label>AI Provider</label>
-                    <select id="ai-provider">
-                      <option value="openrouter" selected>OpenRouter (free models, no key needed)</option>
-                      <option value="groq">Groq (free, super fast)</option>
-                      <option value="gemini">Google Gemini (free tier, needs free key)</option>
-                      <option value="openai">OpenAI (requires API key)</option>
-                      <option value="custom">Custom API</option>
-                    </select>
+                      <select id="ai-provider">
+                        <option value="backend" selected>🚀 Backend AI (server keys, no key needed)</option>
+                        <option value="openrouter">OpenRouter (free models, needs own key)</option>
+                        <option value="groq">Groq (free, super fast)</option>
+                        <option value="gemini">Google Gemini (free tier, needs free key)</option>
+                        <option value="openai">OpenAI (requires API key)</option>
+                        <option value="custom">Custom API</option>
+                      </select>
                   </div>
                   <div class="field">
                     <label>API Key <span class="text-muted">(stored locally)</span></label>
@@ -903,6 +904,16 @@ The solver will detect the type and try to decode/solve it."></textarea>
                       <button class="btn btn-sm" onclick="saveAiConfig()">Save</button>
                       <button class="btn btn-sm btn-clear" onclick="clearAiConfig()">Clear</button>
                     </div>
+                  </div>
+                  <div class="field" id="ai-backend-model-field" style="display:none">
+                    <label>Backend AI Provider</label>
+                    <select id="ai-backend-model">
+                      <option value="openrouter">🔄 OpenRouter (Llama 3.3 70B free)</option>
+                      <option value="groq">⚡ Groq (Llama 3.3 70B fastest)</option>
+                      <option value="gemini">🦾 Gemini 2.0 Flash (free)</option>
+                      <option value="openai">🤖 OpenAI GPT-4o-mini</option>
+                    </select>
+                    <span class="text-muted">Uses server-configured API keys — no key needed from you</span>
                   </div>
                   <div class="field" id="ai-or-model-field" style="display:none">
                     <label>OpenRouter Model</label>
