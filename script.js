@@ -6,12 +6,14 @@
 const VIEW_TITLES = {
   dashboard:'Dashboard',crypto:'Cryptography',encoding:'Encoder / Decoder',
   web:'Web Security',forensics:'Forensics',stego:'Steganography',
-  reversing:'Reversing',osint:'OSINT',pwn:'Pwn / Exploitation',terminal:'Terminal'
+  reversing:'Reversing',osint:'OSINT',pwn:'Pwn / Exploitation',terminal:'Terminal',
+  autosolver:'Auto Solver'
 };
 const VIEW_PATHS = {
   dashboard:'/home',crypto:'/tools/crypto',encoding:'/tools/encoder',
   web:'/tools/web',forensics:'/tools/forensics',stego:'/tools/stego',
-  reversing:'/tools/reversing',osint:'/tools/osint',pwn:'/tools/pwn',terminal:'/shell'
+  reversing:'/tools/reversing',osint:'/tools/osint',pwn:'/tools/pwn',terminal:'/shell',
+  autosolver:'/tools/autosolver'
 };
 let currentView = 'dashboard';
 
@@ -979,6 +981,465 @@ function pwnFindOffset(){
   }
   document.getElementById('pwn-pattern-find-output').value=
     offset!==-1?`Offset found: ${offset} bytes`:'Offset not found - try a different value or longer pattern';
+}
+
+// =============================================
+// Auto Solver
+// =============================================
+function autoSolve(){
+  const text=document.getElementById('auto-input').value;
+  if(!text.trim()){showToast('Paste a CTF problem first','warn');return}
+  const results=document.getElementById('auto-results');
+  results.innerHTML='';
+  const steps=[];
+
+  function addStep(title,body,type){
+    steps.push({title,body,type:type||'info'});
+    const div=document.createElement('div');
+    div.className=`auto-step ${type||'info'}`;
+    div.innerHTML=`<div class="auto-step-title">${title}</div><div class="auto-step-body">${body}</div>`;
+    results.appendChild(div);
+  }
+
+  function checkFlag(val){
+    val=String(val);
+    const patterns=[
+      /[A-Za-z0-9_]+\{[^}]+\}/g,
+      /flag\{[^}]+\}/gi,
+      /CTF\{[^}]+\}/gi,
+      /ctf\{[^}]+\}/gi,
+      /[A-Za-z0-9_]+\{[^}]+\}/g,
+    ];
+    for(const pat of patterns){
+      const m=val.match(pat);
+      if(m) return m[0];
+    }
+    return null;
+  }
+
+  function tryDecode(desc,str,decodeFn){
+    try{
+      const result=decodeFn(str);
+      if(result&&result.length>0){
+        const flag=checkFlag(result);
+        addStep(`✅ ${desc}`,flag?`<span class="found-flag">🏴 FLAG: ${escapeHtml(flag)}</span>\n${escapeHtml(result.substring(0,200))}`:escapeHtml(result.substring(0,500)),'success');
+        return result;
+      }
+    }catch(e){}
+    return null;
+  }
+
+  // Analysis 1: Check for RSA problem
+  function checkRSA(){
+    const nMatch=text.match(/\bn\s*[=:]\s*(\d+)/i);
+    const cMatch=text.match(/\bc\s*[=:]\s*(\d+)/i);
+    const eMatch=text.match(/\be\s*[=:]\s*(\d+)/i);
+    const pMatch=text.match(/\bp\s*[=:]\s*(\d+)/i);
+    const qMatch=text.match(/\bq\s*[=:]\s*(\d+)/i);
+    if(nMatch&&cMatch){
+      let n=nMatch[1],c=cMatch[1],e=eMatch?eMatch[1]:'65537';
+      addStep('🔐 RSA Challenge Detected',`n = ${n}\ne = ${e}\nc = ${c}`,'info');
+      const bn=BigInt(n);
+      if(bn<10000000000000000000n){
+        const factors=rsafactor(bn);
+        if(factors){
+          addStep('✅ RSA Factored (small n)',`p = ${factors[0]}\nq = ${factors[1]}`,'success');
+          const phi=(factors[0]-1n)*(factors[1]-1n);
+          const be=BigInt(e);
+          const bd=modInverse(be,phi);
+          const bc=BigInt(c);
+          const pt=modPow(bc,bd,bn);
+          const plain=bigIntToText(pt);
+          let out=`d = ${bd}\nplain (int) = ${pt}`;
+          if(plain) out+=`\nplain (text) = ${escapeHtml(plain)}`;
+          addStep('🔓 RSA Decrypted',out,'success');
+          return true;
+        }else{
+          addStep('⚠️ RSA n too large for local factoring','Try Wiener attack or use FactorDB online:\nhttps://www.alpertron.com.ar/ECM.HTM','warn');
+        }
+      }else{
+        addStep('⚠️ RSA n is large','Try: https://www.alpertron.com.ar/ECM.HTM\nOr: factordb.com','warn');
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // Analysis 2: Check for hash cracking
+  function checkHash(){
+    const hashPatterns={
+      MD5:/^[a-f0-9]{32}$/i,
+      SHA1:/^[a-f0-9]{40}$/i,
+      SHA256:/^[a-f0-9]{64}$/i,
+      SHA512:/^[a-f0-9]{128}$/i,
+    };
+    const lines=text.split('\n');
+    for(const line of lines){
+      const word=line.trim().split(/[\s,;:=()]+/);
+      for(const w of word){
+        const cleaned=w.replace(/[^a-f0-9]/gi,'');
+        for(const [name,pat] of Object.entries(hashPatterns)){
+          if(pat.test(cleaned)){
+            addStep(`🔑 ${name} Hash Detected`,`Hash: ${cleaned}\n[!] Try: https://crackstation.net\n[!] Or Google the hash directly`,'info');
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // Analysis 3: Extract all encoded-looking strings
+  function checkEncoded(){
+    const candidates=[];
+    const lines=text.split('\n');
+    for(const line of lines){
+      const trimmed=line.trim().split(/[\s,;:=()]+/);
+      for(const w of trimmed){
+        const word=w.replace(/[^a-fA-F0-9+/=]/g,'');
+        if(word.length>=4) candidates.push(word);
+      }
+    }
+
+    // Remove duplicates
+    const unique=[...new Set(candidates)].filter(w=>w.length>=4);
+
+    let foundAny=false;
+
+    // Base64 detection
+    for(const word of unique){
+      if(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(word)&&word.length>8){
+        const dec=tryDecode('Base64 detected',word,s=>{const r=atob(s);if(!/[^\x20-\x7E\n\r\t]/.test(r)||/^[a-zA-Z0-9\s,.!?;:()\-_]+$/.test(r))return r;return null});
+        if(dec){foundAny=true;break}
+      }
+    }
+
+    // Base32
+    if(!foundAny){
+      for(const word of unique){
+        if(/^[A-Z2-7]+=*$/.test(word)&&word.length>8){
+          const dec=tryDecode('Base32 detected',word,s=>{
+            const t=s.replace(/=+$/,'');
+            const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            let bits='';
+            for(const c of t){const idx=chars.indexOf(c);if(idx===-1)throw Error;bits+=idx.toString(2).padStart(5,'0')}
+            let out='';
+            for(let i=0;i<bits.length-7;i+=8){
+              const b=parseInt(bits.substring(i,i+8),2);
+              if(b>=32&&b<=126) out+=String.fromCharCode(b);
+            }
+            return out.length>1?out:null;
+          });
+          if(dec){foundAny=true;break}
+        }
+      }
+    }
+
+    // Hex
+    if(!foundAny){
+      for(const word of unique){
+        if(/^[a-fA-F0-9]+$/.test(word)&&word.length>4&&word.length%2===0){
+          const dec=tryDecode('Hex encoded data',word,s=>{
+            const bytes=s.match(/.{1,2}/g).map(b=>parseInt(b,16));
+            const out=String.fromCharCode(...bytes);
+            if(/^[ -~]+$/.test(out)) return out;
+            return null;
+          });
+          if(dec){foundAny=true;break}
+        }
+      }
+    }
+
+    // Binary
+    if(!foundAny){
+      for(const word of unique){
+        if(/^[01]+$/.test(word)&&word.length>8&&word.length%8===0){
+          const dec=tryDecode('Binary data detected',word,s=>{
+            const out=s.match(/.{1,8}/g).map(b=>String.fromCharCode(parseInt(b,2))).join('');
+            if(/^[ -~]+$/.test(out)) return out;
+            return null;
+          });
+          if(dec){foundAny=true;break}
+        }
+      }
+    }
+
+    return foundAny;
+  }
+
+  // Analysis 4: Caesar/ROT brute force
+  function checkROT(){
+    const lines=text.split('\n');
+    for(const line of lines){
+      const letters=(line.match(/[a-zA-Z]/g)||[]).length;
+      if(letters>8){
+        // Try each shift and look for common English words
+        for(let i=1;i<=25;i++){
+          const shifted=rotShift(line,i);
+          if(/\b(the|this|that|flag|ctf|is|are|was|for|and|not|you|can|key|has|hex|base|decrypt|encrypt|cipher|text|message|secret|password|admin|user|login)\b/i.test(shifted)){
+            addStep(`🔍 ROT${i} Detected (English text)`,escapeHtml(shifted.substring(0,500)),'success');
+            const flag=checkFlag(shifted);
+            if(flag) addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(flag)}</span>`,'success');
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // Analysis 5: XOR single-byte brute force
+  function checkXOR(){
+    const lines=text.split('\n');
+    for(const line of lines){
+      // Try as hex XOR
+      if(/^[a-fA-F0-9]+$/.test(line.replace(/\s/g,''))&&line.length>20){
+        const bytes=hexToBytes(line.replace(/\s/g,''));
+        for(let k=0;k<256;k++){
+          const dec=bytes.map(b=>b^k);
+          const out=String.fromCharCode(...dec);
+          if(/^[ -~]+$/.test(out)&&out.length>4&&/\b(the|this|flag|ctf|key|is)\b/i.test(out)){
+            addStep(`🔓 XOR (key=0x${k.toString(16).padStart(2,'0')}) detected`,escapeHtml(out.substring(0,500)),'success');
+            const flag=checkFlag(out);
+            if(flag) addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(flag)}</span>`,'success');
+            return true;
+          }
+        }
+      }
+      // Try as text XOR
+      const bytes=new TextEncoder().encode(line);
+      for(let k=0;k<256;k++){
+        const dec=bytes.map(b=>b^k);
+        const out=String.fromCharCode(...dec);
+        if(/^[ -~]+$/.test(out)&&out.length>4&&/\b(the|this|flag|ctf|key|is)\b/i.test(out)){
+          addStep(`🔓 XOR (key=0x${k.toString(16).padStart(2,'0')}) detected`,escapeHtml(out.substring(0,500)),'success');
+          const flag=checkFlag(out);
+          if(flag) addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(flag)}</span>`,'success');
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Analysis 6: Atbash
+  function checkAtbash(){
+    const lines=text.split('\n');
+    for(const line of lines){
+      const letters=(line.match(/[a-zA-Z]/g)||[]).length;
+      if(letters>8){
+        const atbash=line.replace(/[a-zA-Z]/g,c=>{
+          const base=c<='Z'?65:97;
+          return String.fromCharCode(25-(c.charCodeAt(0)-base)+base);
+        });
+        if(/\b(the|this|that|flag|ctf|is|are|was|for|and|not|you|can|key|has)\b/i.test(atbash)){
+          addStep('🔄 Atbash Cipher Detected',escapeHtml(atbash.substring(0,500)),'success');
+          const flag=checkFlag(atbash);
+          if(flag) addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(flag)}</span>`,'success');
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Analysis 7: URL encoding
+  function checkURL(){
+    const urlMatch=text.match(/(%[0-9a-fA-F]{2})+/);
+    if(urlMatch){
+      try{
+        const dec=decodeURIComponent(urlMatch[0]);
+        if(dec){
+          addStep('🌐 URL Encoded Data Detected',escapeHtml(dec.substring(0,500)),'success');
+          const flag=checkFlag(dec);
+          if(flag) addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(flag)}</span>`,'success');
+          return true;
+        }
+      }catch{}
+    }
+    return false;
+  }
+
+  // Analysis 8: Morse code
+  function checkMorse(){
+    if(/^[.\- /]+$/.test(text.trim())&&text.length>5){
+      try{
+        const words=text.trim().split('/');
+        let out='';
+        for(const word of words){
+          const letters=word.trim().split(' ');
+          for(const l of letters){
+            if(l.trim()) out+=REV_MORSE[l.trim()]||'?';
+          }
+          out+=' ';
+        }
+        if(out.trim()){
+          addStep('📡 Morse Code Detected',escapeHtml(out.substring(0,500)),'success');
+          const flag=checkFlag(out);
+          if(flag) addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(flag)}</span>`,'success');
+          return true;
+        }
+      }catch{}
+    }
+    return false;
+  }
+
+  // Analysis 9: Numbers to ASCII
+  function checkNumbersAscii(){
+    const nums=text.match(/\b(\d{2,3})\b/g);
+    if(nums&&nums.length>3){
+      const valid=nums.map(Number).filter(n=>n>=32&&n<=126);
+      if(valid.length>3){
+        const ascii=String.fromCharCode(...valid);
+        if(/^[ -~]+$/.test(ascii)){
+          addStep('🔢 Decimal ASCII values detected',escapeHtml(ascii),'success');
+          const flag=checkFlag(ascii);
+          if(flag) addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(flag)}</span>`,'success');
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Analysis 10: Check for file signature / forensics
+  function checkFileSig(){
+    const hexText=text.replace(/\s/g,'').toUpperCase();
+    for(const [k,v] of Object.entries(FILE_SIGS)){
+      if(hexText.startsWith(k)){
+        addStep('📁 File Signature Detected',`Signature: ${k}\nFile Type: ${v}`,'info');
+        if(v.includes('ZIP')||v.includes('RAR')||v.includes('GZ')){
+          addStep('💡 Compressed Archive','This may contain hidden files. Use tools like 7-Zip or binwalk.','warn');
+        }
+        if(v.includes('Image')||v.includes('PNG')||v.includes('JPEG')||v.includes('GIF')){
+          addStep('💡 Image File','Check for embedded data with: strings, binwalk, zsteg, or stegsolve','warn');
+        }
+        return true;
+      }
+    }
+    // Check if it looks like hex dump (forensics)
+    if(/^[0-9a-fA-F]{8}\s/.test(text)){
+      addStep('📋 Hex Dump Detected','This looks like a hex dump. Try the Hex Viewer or Strings tool.','info');
+      return true;
+    }
+    return false;
+  }
+
+  // Analysis 11: Entropy analysis
+  function checkEntropy(){
+    if(text.length>20){
+      const freq={};
+      for(const c of text) freq[c]=(freq[c]||0)+1;
+      const len=text.length;
+      let entropy=0;
+      for(const c in freq){
+        const p=freq[c]/len;
+        entropy-=p*Math.log2(p);
+      }
+      const maxEntropy=Math.log2(Math.min(256,text.length));
+      const ratio=entropy/maxEntropy;
+      if(ratio>0.8){
+        addStep('📊 High Entropy Detected',`Entropy: ${entropy.toFixed(2)}/${maxEntropy.toFixed(2)} (${(ratio*100).toFixed(0)}%)\nThis may be encrypted, compressed, or random data.`,'warn');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Analysis 12: Check for Vigenere-like (longer text with preserved spaces)
+  function checkVigenere(){
+    // Only for longer text where ROT/Atbash didn't match
+    const lines=text.split('\n');
+    for(const line of lines){
+      const alphaOnly=line.replace(/[^a-zA-Z]/g,'');
+      if(alphaOnly.length>20){
+        // Frequency analysis - check if it's likely a substitution cipher
+        const freq={};
+        for(const c of alphaOnly.toLowerCase()) freq[c]=(freq[c]||0)+1;
+        const values=Object.values(freq);
+        if(values.length>10){
+          addStep('🔤 Possible Substitution/Vigenere Cipher','Try the Vigenere tool with a known key, or try Kasiski analysis.\nCommon keys: flag, key, secret, ctf, crypto','warn');
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Analysis 13: IPv4 / Domain detection
+  function checkNetwork(){
+    const ips=text.match(/\b(\d{1,3}\.){3}\d{1,3}\b/g);
+    if(ips){
+      addStep('🌍 IP Addresses Found',ips.join('\n'),'info');
+    }
+    const domains=text.match(/\b([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b/g);
+    if(domains){
+      addStep('🌐 Domains Found',[...new Set(domains)].join('\n'),'info');
+    }
+    return ips||domains;
+  }
+
+  // Analysis 14: Reverse string
+  function checkReverse(){
+    const lines=text.split('\n');
+    for(const line of lines){
+      const trimmed=line.trim();
+      if(trimmed.length>4){
+        const reversed=Array.from(trimmed).reverse().join('');
+        if(/\b(flag|ctf|galf|ftc)\b/i.test(reversed)){
+          addStep('🔄 Reversed String Detected',escapeHtml(reversed),'success');
+          const flag=checkFlag(reversed);
+          if(flag) addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(flag)}</span>`,'success');
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // === Run all analyses ===
+  addStep('🚀 Starting Analysis','Analyzing challenge input...','info');
+
+  const checks=[
+    {name:'RSA',fn:checkRSA},
+    {name:'File Signature',fn:checkFileSig},
+    {name:'Morse Code',fn:checkMorse},
+    {name:'URL Encoding',fn:checkURL},
+    {name:'Numbers to ASCII',fn:checkNumbersAscii},
+    {name:'Base64/Hex/Binary',fn:checkEncoded},
+    {name:'XOR Brute Force',fn:checkXOR},
+    {name:'Caesar/ROT Cipher',fn:checkROT},
+    {name:'Atbash Cipher',fn:checkAtbash},
+    {name:'Hash Detection',fn:checkHash},
+    {name:'Reverse String',fn:checkReverse},
+    {name:'Network Recon',fn:checkNetwork},
+    {name:'Entropy Analysis',fn:checkEntropy},
+    {name:'Substitution Cipher',fn:checkVigenere},
+  ];
+
+  let foundCount=0;
+  for(const check of checks){
+    try{
+      if(check.fn()) foundCount++;
+    }catch(e){
+      addStep(`⚠️ ${check.name} Error`,e.message,'error');
+    }
+  }
+
+  // Summary
+  const summary=document.createElement('div');
+  summary.className='auto-summary';
+  const summaryLines=foundCount>0?
+    `<div class="check-count">✅ ${foundCount} analyses matched</div><div class="check-detail">The solver found ${foundCount} actionable results above.</div>`:
+    `<div class="check-count">❌ No patterns matched</div><div class="check-detail">Try using individual tools from the sidebar, or provide more context.</div>`;
+  summary.innerHTML=summaryLines;
+  results.insertBefore(summary,results.firstChild);
+
+  if(foundCount===0){
+    addStep('💡 Suggestions','• Is this a web challenge? Try the Web & OSINT tools\n• Is this a reversing challenge? Try the Reversing tools\n• Steganography? Check the Stego section\n• Binary exploitation? Try the Pwn tools\n• Run strings / file command in Terminal','warn');
+  }
+
+  results.scrollTop=0;
 }
 
 // =============================================
