@@ -887,11 +887,15 @@ The solver will detect the type and try to decode/solve it."></textarea>
               <div class="tool-panel" id="panel-auto-ai">
                 <div class="ai-solver-config">
                   <div class="field">
-                    <label>OpenAI API Key <span class="text-muted">(stored locally)</span></label>
+                    <label>API URL <span class="text-muted">(any OpenAI-compatible endpoint)</span></label>
+                    <input type="text" id="ai-api-url" placeholder="https://api.openai.com/v1/chat/completions" />
+                  </div>
+                  <div class="field">
+                    <label>API Key <span class="text-muted">(stored locally)</span></label>
                     <div class="ai-key-row">
-                      <input type="password" id="ai-api-key" placeholder="sk-..." />
-                      <button class="btn btn-sm" onclick="saveAiKey()">Save</button>
-                      <button class="btn btn-sm btn-clear" onclick="clearAiKey()">Clear</button>
+                      <input type="password" id="ai-api-key" placeholder="sk-... or leave blank if not needed" />
+                      <button class="btn btn-sm" onclick="saveAiConfig()">Save</button>
+                      <button class="btn btn-sm btn-clear" onclick="clearAiConfig()">Clear</button>
                     </div>
                   </div>
                   <div class="field">
@@ -902,7 +906,12 @@ The solver will detect the type and try to decode/solve it."></textarea>
                       <option value="gpt-4-turbo">GPT-4 Turbo</option>
                       <option value="o3-mini">o3-mini</option>
                       <option value="o4-mini">o4-mini</option>
+                      <option value="custom">Custom (type below)</option>
                     </select>
+                  </div>
+                  <div class="field" id="ai-custom-model-field" style="display:none">
+                    <label>Custom Model Name</label>
+                    <input type="text" id="ai-custom-model" placeholder="e.g. llama3, deepseek-coder, mistral" />
                   </div>
                 </div>
                 <div class="autosolver-input-area">
@@ -917,7 +926,7 @@ The AI will analyze and solve it step by step."></textarea>
                 <div id="ai-response" class="autosolver-results" style="margin-top:1rem">
                   <div class="auto-placeholder">
                     <div class="auto-placeholder-icon">🤖</div>
-                    <div>Enter your OpenAI API key above, paste a problem, and click Send to AI</div>
+                    <div>Configure your API endpoint above, paste a problem, and click Send to AI</div>
                   </div>
                 </div>
               </div>

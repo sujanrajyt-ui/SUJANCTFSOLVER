@@ -1466,40 +1466,52 @@ Rules:
 9. Be thorough and educational - explain WHY something works
 10. If data is incomplete, ask for the specific missing values`;
 
-function saveAiKey(){
+function saveAiConfig(){
   const key=document.getElementById('ai-api-key').value.trim();
-  if(!key){showToast('Enter an API key','warn');return}
-  localStorage.setItem('openai_api_key',key);
-  showToast('API key saved locally');
+  const url=document.getElementById('ai-api-url').value.trim();
+  localStorage.setItem('ai_api_url',url||'https://api.openai.com/v1/chat/completions');
+  if(key) localStorage.setItem('ai_api_key',key);
+  showToast('AI config saved locally');
 }
 
-function clearAiKey(){
-  localStorage.removeItem('openai_api_key');
+function clearAiConfig(){
+  localStorage.removeItem('ai_api_key');
+  localStorage.removeItem('ai_api_url');
   document.getElementById('ai-api-key').value='';
-  showToast('API key cleared','warn');
+  document.getElementById('ai-api-url').value='https://api.openai.com/v1/chat/completions';
+  showToast('AI config cleared','warn');
 }
 
 function clearAiChat(){
   const el=document.getElementById('ai-response');
-  el.innerHTML=`<div class="auto-placeholder"><div class="auto-placeholder-icon">🤖</div><div>Enter your OpenAI API key above, paste a problem, and click Send to AI</div></div>`;
+  el.innerHTML=`<div class="auto-placeholder"><div class="auto-placeholder-icon">🤖</div><div>Configure your API endpoint above, paste a problem, and click Send to AI</div></div>`;
   document.getElementById('ai-input').value='';
 }
 
 function autoAISolve(){
-  const key=localStorage.getItem('openai_api_key')||document.getElementById('ai-api-key').value.trim();
-  if(!key){showToast('Enter your OpenAI API key first','warn');return}
+  const savedKey=localStorage.getItem('ai_api_key');
+  const key=savedKey||document.getElementById('ai-api-key').value.trim();
+  const savedUrl=localStorage.getItem('ai_api_url');
+  const apiUrl=savedUrl||document.getElementById('ai-api-url').value.trim()||'https://api.openai.com/v1/chat/completions';
 
   const problem=document.getElementById('ai-input').value.trim();
   if(!problem){showToast('Enter a CTF problem','warn');return}
 
-  // Save key if entered
-  if(document.getElementById('ai-api-key').value.trim()){
-    localStorage.setItem('openai_api_key',document.getElementById('ai-api-key').value.trim());
+  // Save if entered
+  const urlInput=document.getElementById('ai-api-url').value.trim();
+  const keyInput=document.getElementById('ai-api-key').value.trim();
+  if(urlInput||keyInput){
+    localStorage.setItem('ai_api_url',urlInput||'https://api.openai.com/v1/chat/completions');
+    if(keyInput) localStorage.setItem('ai_api_key',keyInput);
   }
 
-  const model=document.getElementById('ai-model').value;
-  const responseEl=document.getElementById('ai-response');
+  let model=document.getElementById('ai-model').value;
+  if(model==='custom'){
+    model=document.getElementById('ai-custom-model').value.trim();
+    if(!model){showToast('Enter a custom model name','warn');return}
+  }
 
+  const responseEl=document.getElementById('ai-response');
   responseEl.innerHTML=`<div class="auto-placeholder"><div class="ai-thinking">🤖 AI is analyzing your problem...</div></div>`;
 
   const messages=[
@@ -1507,12 +1519,12 @@ function autoAISolve(){
     {role:'user',content:problem}
   ];
 
-  fetch('https://api.openai.com/v1/chat/completions',{
+  const headers={'Content-Type':'application/json'};
+  if(key) headers['Authorization']=`Bearer ${key}`;
+
+  fetch(apiUrl,{
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'Authorization':`Bearer ${key}`
-    },
+    headers:headers,
     body:JSON.stringify({
       model:model,
       messages:messages,
@@ -1526,7 +1538,7 @@ function autoAISolve(){
     }
     return r.json();
   }).then(data=>{
-    const content=data.choices?.[0]?.message?.content||'No response from AI';
+    const content=data.choices?.[0]?.message?.content||data.response||'No response from AI';
     renderAiResponse(content);
   }).catch(err=>{
     responseEl.innerHTML=`<div class="ai-error">❌ Error: ${escapeHtml(err.message)}</div>`;
@@ -1548,12 +1560,20 @@ function renderAiResponse(content){
   el.innerHTML=`<div class="ai-response-content">${html}</div>`;
 }
 
-// Load saved API key on init
+// Load saved AI config on init + model toggle
 (function(){
-  const savedKey=localStorage.getItem('openai_api_key');
-  if(savedKey){
-    const input=document.getElementById('ai-api-key');
-    if(input){input.value=savedKey}
+  const savedKey=localStorage.getItem('ai_api_key');
+  const savedUrl=localStorage.getItem('ai_api_url');
+  if(savedKey){const el=document.getElementById('ai-api-key');if(el) el.value=savedKey}
+  if(savedUrl){const el=document.getElementById('ai-api-url');if(el) el.value=savedUrl}
+  else{const el=document.getElementById('ai-api-url');if(el) el.value='https://api.openai.com/v1/chat/completions'}
+  // Model toggle
+  const sel=document.getElementById('ai-model');
+  const custField=document.getElementById('ai-custom-model-field');
+  if(sel&&custField){
+    sel.addEventListener('change',()=>{
+      custField.style.display=sel.value==='custom'?'block':'none';
+    });
   }
 })();
 
