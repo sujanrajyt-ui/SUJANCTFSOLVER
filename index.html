@@ -890,8 +890,8 @@ The solver will detect the type and try to decode/solve it."></textarea>
                 <div class="field">
                   <label>AI Provider</label>
                   <select id="ai-provider">
-                        <option value="gemini" selected>🦾 Google Gemini (free, 60 req/min, no CC needed)</option>
-                        <option value="openrouter">🔄 OpenRouter (free models, needs own key)</option>
+                        <option value="openrouter" selected>🧠 OpenRouter (DeepSeek R1 free — best for CTF)</option>
+                        <option value="gemini">🦾 Google Gemini (free, 60 req/min, no CC)</option>
                         <option value="backend">🚀 Backend AI (server keys, no key needed)</option>
                         <option value="groq">Groq (free, super fast)</option>
                         <option value="openai">OpenAI (requires API key)</option>
@@ -909,8 +909,8 @@ The solver will detect the type and try to decode/solve it."></textarea>
                   <div class="field" id="ai-backend-model-field" style="display:none">
                     <label>Backend AI Provider</label>
                     <select id="ai-backend-model">
+                      <option value="openrouter" selected>🔄 OpenRouter (DeepSeek R1 — best free)</option>
                       <option value="gemini">🦾 Gemini 2.0 Flash (free, 60 req/min)</option>
-                      <option value="openrouter">🔄 OpenRouter (Llama 3.3 70B free)</option>
                       <option value="groq">⚡ Groq (Llama 3.3 70B fastest)</option>
                       <option value="openai">🤖 OpenAI GPT-4o-mini</option>
                     </select>
@@ -928,8 +928,9 @@ The solver will detect the type and try to decode/solve it."></textarea>
                     <label>OpenRouter Model</label>
                     <select id="ai-or-model">
                       <optgroup label="✅ Free Models">
+                        <option value="deepseek/deepseek-r1:free" selected>DeepSeek R1 (free, reasoning model — best for CTF)</option>
                         <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (free, strong for CTF)</option>
-                        <option value="nousresearch/hermes-3-llama-3.1-405b:free" selected>Hermes 3 405B (free, strongest, most reliable)</option>
+                        <option value="nousresearch/hermes-3-llama-3.1-405b:free">Hermes 3 405B (free, strongest, most reliable)</option>
                         <option value="deepseek/deepseek-v4-flash:free">DeepSeek V4 Flash (free, fast reasoning)</option>
                         <option value="qwen/qwen3-coder:free">Qwen 3 Coder (free, great for code)</option>
                         <option value="liquid/lfm-2.5-1.2b-thinking:free">LFM 1.2B Thinking (free, reasoning)</option>
@@ -952,13 +953,13 @@ The solver will detect the type and try to decode/solve it."></textarea>
                     <input type="text" id="ai-custom-model" placeholder="e.g. llama3, deepseek-coder, mistral" />
                   </div>
                   <div class="ai-provider-info" id="ai-provider-info">
-                    🦾 <strong>Gemini</strong> (default) — free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>, 60 req/min, no credit card needed. Best free option for CTF.
+                    🧠 <strong>OpenRouter (DeepSeek R1)</strong> (default) — free key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>. DeepSeek R1 is a reasoning model — it actually THINKS through CTF problems step by step. Closest free model to Shannon-level quality.
                     <br><br>
-                    💡 <strong>OpenRouter</strong> — free signup at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>, access 200+ models including GPT-4o, Claude 3.5, DeepSeek R1.
+                    🦾 <strong>Gemini</strong> — free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>, 60 req/min, no credit card. Good for simple decodes but weaker on complex CTF.
                     <br><br>
-                    ⚡ <strong>Groq</strong> — free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>, fastest inference, great for code.
+                    ⚡ <strong>Groq</strong> — free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>, fastest inference.
                     <br><br>
-                    🏆 <strong>Best setup:</strong> Get a free Gemini key → paste it → done. For stronger results, use OpenRouter with DeepSeek R1 or Claude 3.5 Sonnet.
+                    🏆 <strong>Best free setup:</strong> OpenRouter key → DeepSeek R1. If that fails, Hermes 3 405B. Avoid free Gemini for hard CTF — it hallucinates flags.
                   </div>
                 </div>
                 <div class="autosolver-input-area">

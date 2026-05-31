@@ -1860,11 +1860,11 @@ async function agentSolve(){
   ].join('\n');
 
   try{
-    const provider=document.getElementById('ai-provider')?.value||'gemini';
+    const provider=document.getElementById('ai-provider')?.value||'openrouter';
     const key=localStorage.getItem('ai_api_key')||'';
     let content;
     if(provider==='backend'){
-      const bm=document.getElementById('ai-backend-model')?.value||'gemini';
+      const bm=document.getElementById('ai-backend-model')?.value||'openrouter';
       content=await callBackendAI(agentPrompt,bm);
     }else if(provider==='openrouter'){
       content=await callOpenRouter(key,agentPrompt);
@@ -1976,8 +1976,8 @@ async function callBackendAI(problem,provider='openrouter'){
 }
 
 async function callOpenRouter(key,problem){
-  const selectedModel=document.getElementById('ai-or-model')?.value||'meta-llama/llama-3.3-70b-instruct:free';
-  const fallbackModels=['nousresearch/hermes-3-llama-3.1-405b:free','deepseek/deepseek-r1:free','qwen/qwen3-coder:free','liquid/lfm-2.5-1.2b-thinking:free'];
+  const selectedModel=document.getElementById('ai-or-model')?.value||'deepseek/deepseek-r1:free';
+  const fallbackModels=['deepseek/deepseek-r1:free','nousresearch/hermes-3-llama-3.1-405b:free','qwen/qwen3-coder:free','meta-llama/llama-3.3-70b-instruct:free'];
   const modelsToTry=[selectedModel,...fallbackModels.filter(m=>m!==selectedModel)];
   let lastErr='';
   for(const model of modelsToTry){
@@ -2173,7 +2173,7 @@ function renderAiResponse(content){
     }
     if(v==='openrouter'&&!localStorage.getItem('ai_or_model')){
       const orSel=document.getElementById('ai-or-model');
-      if(orSel) orSel.value='nousresearch/hermes-3-llama-3.1-405b:free';
+      if(orSel) orSel.value='deepseek/deepseek-r1:free';
     }
   }
   if(sel) sel.addEventListener('change',toggleFields);
