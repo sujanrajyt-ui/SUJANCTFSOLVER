@@ -1,1306 +1,872 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#7A1C2A" />
-  <!--
-      ===== BACKEND API URL =====
-      The form + admin panel call this backend. Don't break this if you don't
-      know what you're doing. Leave it pointing at the Emergent preview, OR
-      change to your own deployed backend (Render / Railway / Fly).
-    -->
-  <meta name="adhikar-api" content="/" />
-  <meta name="description"
-    content="ADHIKAR'26 — A 2-day mock parliament empowering student voices and shaping leaders. June 13–14, 2026." />
-  <title>ADHIKAR'26 — Empowering Voices. Shaping Leaders.</title>
-  <link rel="icon" href="assets/logo.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800;900&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet" />
+  <title>SUJANSCTFSOLVER — AI-Powered CTF Solving Platform</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
-
 <body>
-  <!-- Cursor Spotlight -->
-  <div id="cursor-spotlight"></div>
-
-
-  <!-- ============ NAVBAR ============ -->
-  <header id="navbar" class="navbar" data-testid="navbar">
-    <nav class="nav-inner">
-      <button class="nav-brand" data-scroll-top data-testid="navbar-logo">
-        <span class="brand-logo">
-          <img src="assets/logo.png" alt="Adhikar'26" />
-        </span>
-        <span class="brand-text">
-          <span class="brand-name">
-            ADHIKAR<span class="brand-year">'26</span>
-          </span>
-          <span class="brand-sub">Mock Parliament</span>
-        </span>
-      </button>
-
-      <ul class="nav-links">
-        <li><a href="#about" class="nav-link" data-testid="nav-about">About</a></li>
-        <li><a href="#objectives" class="nav-link" data-testid="nav-objectives">Objectives</a></li>
-        <li><a href="#timeline" class="nav-link" data-testid="nav-timeline">Timeline</a></li>
-        <li><a href="#schedule" class="nav-link" data-testid="nav-schedule">Schedule</a></li>
-        <li><a href="#info" class="nav-link" data-testid="nav-info">Information</a></li>
-        <li><a href="#awards" class="nav-link" data-testid="nav-awards">Awards</a></li>
-        <li><a href="#team" class="nav-link" data-testid="nav-team">Team</a></li>
-        <li><a href="#sponsors" class="nav-link" data-testid="nav-sponsors">Sponsors</a></li>
-        <li><a href="#contact" class="nav-link" data-testid="nav-contact">Contact</a></li>
-      </ul>
-
-      <div class="nav-actions">
-        <button class="btn-primary nav-register" data-open-register data-testid="navbar-register-btn">
-          Register
+  <div id="matrix-rain"></div>
+  <div class="app-container">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">🛡️</span>
+          <div class="logo-text">
+            <span class="logo-title">SUJAN'S</span>
+            <span class="logo-sub">CTF SOLVER</span>
+          </div>
+        </div>
+      </div>
+      <div class="kali-status" id="kali-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Kali Server: Checking...</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
         </button>
-        <a href="assets/brochure/adhikar26-brochure.pdf" download class="btn-ghost nav-brochure"
-          data-testid="navbar-brochure-btn">
-          Brochure
-        </a>
-        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" data-testid="navbar-menu-toggle">
-          <svg id="icon-menu" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-          <svg id="icon-close" class="hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+        <button class="nav-item" data-view="crypto">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Crypto
         </button>
-      </div>
-    </nav>
-
-    <div id="mobile-menu" class="mobile-menu hidden" data-testid="navbar-mobile">
-      <a href="#about" class="mm-link">About</a>
-      <a href="#objectives" class="mm-link">Objectives</a>
-      <a href="#timeline" class="mm-link">Timeline</a>
-      <a href="#schedule" class="mm-link">Schedule</a>
-      <a href="#info" class="mm-link">Information</a>
-      <a href="#awards" class="mm-link">Awards</a>
-      <a href="#team" class="mm-link">Team</a>
-      <a href="#sponsors" class="mm-link">Sponsors</a>
-      <a href="#contact" class="mm-link">Contact</a>
-      <button class="btn-primary mm-register" data-open-register data-testid="navbar-mobile-register">Register</button>
-    </div>
-  </header>
-
-  <!-- ============ HERO ============ -->
-  <section class="hero" data-testid="hero-section">
-    <div class="hero-bloom hero-bloom-1"></div>
-    <div class="hero-bloom hero-bloom-2"></div>
-    <div class="hero-grid"></div>
-
-    <div class="container hero-inner">
-      <div class="sponsor-banner glass" data-testid="title-sponsor-banner">
-        <span class="sponsor-mark">
-          <img src="assets/midmac.png" alt="MIDMAC Group" />
-        </span>
-        <span class="sponsor-text">MIDMAC Group Presents</span>
-        <span class="sponsor-divider"></span>
-        <span class="sponsor-name">ADHIKAR'26</span>
-      </div>
-
-      <div class="logo-wrap">
-        <div class="logo-glow"></div>
-        <div class="logo-float">
-          <div class="logo-disc">
-            <img src="assets/logo.png" alt="Adhikar'26 logo" />
-            <div class="logo-shine"></div>
-          </div>
-          <div class="logo-pulse"></div>
-        </div>
-      </div>
-
-      <p class="hero-eyebrow" data-testid="hero-eyebrow">
-        June 13 – 14 · 2026 · Hubli
-      </p>
-      <h1 class="hero-title" data-testid="hero-title">
-        ADHIKAR<span class="hero-title-year">'26</span>
-      </h1>
-      <p class="hero-tagline" data-testid="hero-tagline">
-        Empowering Voices. Shaping Leaders.
-      </p>
-      <p class="hero-desc" data-testid="hero-description">
-        A two-day national mock parliament where students step into the
-        shoes of Members of Parliament — to debate, to dissent, and to
-        decide the future they will inherit.
-      </p>
-
-      <div class="countdown" data-testid="hero-countdown">
-        <p class="countdown-label">The House Convenes In</p>
-        <div class="countdown-units">
-          <div class="cd-unit" data-testid="countdown-days">
-            <div class="cd-card glass">
-              <span id="cd-days" class="cd-value">00</span>
-            </div>
-            <span class="cd-name">Days</span>
-          </div>
-          <span class="cd-sep">·</span>
-          <div class="cd-unit" data-testid="countdown-hours">
-            <div class="cd-card glass">
-              <span id="cd-hours" class="cd-value">00</span>
-            </div>
-            <span class="cd-name">Hours</span>
-          </div>
-          <span class="cd-sep">·</span>
-          <div class="cd-unit" data-testid="countdown-minutes">
-            <div class="cd-card glass">
-              <span id="cd-minutes" class="cd-value">00</span>
-            </div>
-            <span class="cd-name">Minutes</span>
-          </div>
-          <span class="cd-sep">·</span>
-          <div class="cd-unit" data-testid="countdown-seconds">
-            <div class="cd-card glass">
-              <span id="cd-seconds" class="cd-value">00</span>
-            </div>
-            <span class="cd-name">Seconds</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="hero-cta">
-        <button class="btn-primary" data-open-register data-testid="hero-register-btn">
-          Register Now
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12" />
-            <polyline points="12 5 19 12 12 19" />
-          </svg>
+        <button class="nav-item" data-view="encoding">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          Encoder
         </button>
-        <a href="assets/brochure/adhikar26-brochure.pdf" download class="btn-ghost" data-testid="hero-brochure-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Brochure
-        </a>
-        <a href="#about" class="btn-ghost" data-testid="hero-learn-more-btn">Learn More</a>
-      </div>
-
-      <div class="scroll-cue">
-        <span>Scroll</span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ ABOUT ============ -->
-  <section id="about" class="section section-cream" data-testid="about-section">
-    <div class="container about-grid">
-      <div class="reveal about-head">
-        <span class="eyebrow">About the Parliament</span>
-        <h2 class="h2">
-          A House for the
-          <em class="ital-gold shimmer-text"> next generation</em> of statesmen.
-        </h2>
-      </div>
-      <div class="reveal about-body">
-        <p class="lede">
-          <strong>ADHIKAR'26</strong> is a two-day simulated mock parliament
-          where students role-play Members of Parliament — to debate
-          national issues, draft bills, and master the procedures that
-          govern the world's largest democracy.
-        </p>
-        <p class="prose">
-          More than a competition, it is a crucible. Delegates leave with
-          sharpened leadership, public speaking and critical thinking — and
-          a deeper awareness of the rights and responsibilities of
-          citizenship.
-        </p>
-        <div class="chip-row">
-          <span class="chip"><span data-count="2" data-suffix=" Days">2 Days</span></span>
-          <span class="chip"><span data-count="11" data-suffix=" Awards">11 Awards</span></span>
-          <span class="chip"><span data-count="1" data-suffix=" House">1 House</span></span>
-          <span class="chip">Unlimited Voices</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Ornament Divider -->
-  <div class="ornament" aria-hidden="true"><span class="ornament-diamond"></span></div>
-
-  <!-- ============ OBJECTIVES ============ -->
-  <section id="objectives" class="section section-white" data-testid="objectives-section">
-    <div class="container">
-      <div class="section-head reveal">
-        <span class="eyebrow">Our Objectives</span>
-        <h2 class="h2">
-          Three pillars of a
-          <em class="ital-gold shimmer-text"> deliberative </em>
-          democracy.
-        </h2>
-      </div>
-
-      <div class="grid-3 reveal-stagger">
-        <article class="card card-tilt anim-border" data-testid="objective-card-0">
-          <div class="card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 11l18-5v12L3 14v-3z" />
-              <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-            </svg>
-          </div>
-          <span class="card-num">01</span>
-          <h3 class="card-title">Political Awareness</h3>
-          <p class="card-text">
-            Cultivating an informed citizenry that engages with the issues
-            shaping our democracy.
-          </p>
-          <div class="card-rule"></div>
-        </article>
-
-        <article class="card card-tilt anim-border" data-testid="objective-card-1">
-          <div class="card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" />
-            </svg>
-          </div>
-          <span class="card-num">02</span>
-          <h3 class="card-title">Leadership &amp; Oratory</h3>
-          <p class="card-text">
-            Developing leadership, public speaking, and critical thinking
-            through immersive simulation.
-          </p>
-          <div class="card-rule"></div>
-        </article>
-
-        <article class="card card-tilt anim-border" data-testid="objective-card-2">
-          <div class="card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3l1.9 5.6L20 10l-4.5 4 1.4 6L12 17l-4.9 3 1.4-6L4 10l6.1-1.4L12 3z" />
-            </svg>
-          </div>
-          <span class="card-num">03</span>
-          <h3 class="card-title">Recognition of Potential</h3>
-          <p class="card-text">
-            Providing a national-grade platform to identify and celebrate
-            the brightest student voices.
-          </p>
-          <div class="card-rule"></div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- Ornament Divider -->
-  <div class="ornament" aria-hidden="true"><span class="ornament-diamond"></span></div>
-
-  <!-- ============ TIMELINE ============ -->
-  <section id="timeline" class="section section-cream timeline-section" data-testid="timeline-section">
-    <div class="grid-bg"></div>
-    <div class="container container-narrow">
-      <div class="section-head reveal">
-        <span class="eyebrow">The Calendar</span>
-        <h2 class="h2">
-          From campaign to
-          <em class="ital-gold shimmer-text"> the floor.</em>
-        </h2>
-      </div>
-
-      <ol class="timeline">
-        <li class="timeline-item reveal" data-testid="timeline-item-0">
-          <span class="tl-date">April · 2nd Week</span>
-          <h3 class="tl-title">Campaign Begins</h3>
-          <p class="tl-desc">Outreach across institutions kicks off across the region.</p>
-        </li>
-        <li class="timeline-item reveal" data-testid="timeline-item-1">
-          <span class="tl-date">May 26, 2026</span>
-          <h3 class="tl-title">Registrations Open</h3>
-          <p class="tl-desc">Doors open for delegates to claim their seat in the House.</p>
-        </li>
-        <li class="timeline-item reveal" data-testid="timeline-item-2">
-          <span class="tl-date">June 7, 2026</span>
-          <h3 class="tl-title">Registrations Close</h3>
-          <p class="tl-desc">Final intake of delegates before allocations.</p>
-        </li>
-        <li class="timeline-item reveal" data-testid="timeline-item-3">
-          <span class="tl-date">June 8 – 12</span>
-          <h3 class="tl-title">Allocations &amp; Preparation</h3>
-          <p class="tl-desc">Portfolios assigned. Briefings, dossiers and study material released.</p>
-        </li>
-        <li class="timeline-item reveal" data-testid="timeline-item-4">
-          <span class="tl-date">June 13 – 14</span>
-          <h3 class="tl-title">The Parliament Convenes</h3>
-          <p class="tl-desc">Two days of debate, deliberation and decisions.</p>
-        </li>
-      </ol>
-    </div>
-  </section>
-
-  <!-- Ornament Divider -->
-  <div class="ornament" aria-hidden="true"><span class="ornament-diamond"></span></div>
-
-  <!-- ============ SCHEDULE ============ -->
-  <section id="schedule" class="section section-white" data-testid="schedule-section">
-    <div class="container">
-      <div class="section-head reveal">
-        <span class="eyebrow">Order of Proceedings</span>
-        <h2 class="h2">
-          Two days.
-          <em class="ital-gold shimmer-text"> One House. </em>
-          Many voices.
-        </h2>
-      </div>
-
-      <div class="grid-2">
-        <article class="schedule-card card-tilt reveal" data-testid="schedule-card-0">
-          <div class="sc-bloom"></div>
-          <div class="sc-head">
-            <div>
-              <p class="kicker">Day 1</p>
-              <h3 class="sc-date">June 13, 2026</h3>
-            </div>
-            <div class="sc-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="4" />
-                <path
-                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-              </svg>
-            </div>
-          </div>
-          <ol class="sc-list">
-            <li><span class="sc-num">01</span><span>10:00 am – 11:00 am · Welcome & Inaugural</span></li>
-            <li><span class="sc-num">02</span><span>11:00 am – 12:00 pm · The Question Hour</span></li>
-            <li><span class="sc-num">03</span><span>12:00 pm – 12:30 pm · Break</span></li>
-            <li><span class="sc-num">04</span><span>12:30 pm – 01:30 pm · The Zero Hour</span></li>
-            <li><span class="sc-num">05</span><span>01:30 pm – 02:30 pm · Lunch Break</span></li>
-            <li><span class="sc-num">06</span><span>02:30 pm – 05:00 pm · Ministry Reports</span></li>
-            <li><span class="sc-num">07</span><span>05:00 pm – 06:00 pm · Delegate Social</span></li>
-          </ol>
-        </article>
-
-        <article class="schedule-card card-tilt reveal" data-testid="schedule-card-1">
-          <div class="sc-bloom"></div>
-          <div class="sc-head">
-            <div>
-              <p class="kicker">Day 2</p>
-              <h3 class="sc-date">June 14, 2026</h3>
-            </div>
-            <div class="sc-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            </div>
-          </div>
-          <ol class="sc-list">
-            <li><span class="sc-num">01</span><span>10:00 am – 11:00 am · The Zero Hour</span></li>
-            <li><span class="sc-num">02</span><span>11:00 am – 12:00 pm · Break</span></li>
-            <li><span class="sc-num">03</span><span>12:00 pm – 02:30 pm · Bill Presentations</span></li>
-            <li><span class="sc-num">04</span><span>02:30 pm – 03:30 pm · Lunch Break</span></li>
-            <li><span class="sc-num">05</span><span>03:30 pm onwards · Valedictory & Awards</span></li>
-          </ol>
-        </article>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ============ INFORMATION ACCORDION ============ -->
-  <section id="info" class="section section-cream" data-testid="info-section">
-    <div class="container container-narrow">
-      <div class="section-head reveal">
-        <span class="eyebrow">The Procedure</span>
-        <h2 class="h2">
-          Know the
-          <em class="ital-gold"> instruments </em>
-          of debate.
-        </h2>
-      </div>
-
-      <div class="accordion reveal" data-testid="info-accordion">
-        <div class="acc-item" data-testid="info-item-0">
-          <button class="acc-trigger">
-            <span class="acc-num">01</span>
-            <span class="acc-q">What is Question Hour?</span>
-            <svg class="acc-chev" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-          <div class="acc-content">
-            <p>
-              Question Hour is the first hour of every parliamentary sitting
-              where Members of Parliament question ministers about the
-              working of their departments. It is the most powerful tool of
-              legislative oversight and accountability.
-            </p>
-          </div>
-        </div>
-        <div class="acc-item" data-testid="info-item-1">
-          <button class="acc-trigger">
-            <span class="acc-num">02</span>
-            <span class="acc-q">What is Zero Hour?</span>
-            <svg class="acc-chev" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-          <div class="acc-content">
-            <p>
-              Zero Hour follows Question Hour and allows MPs to raise
-              matters of urgent public importance without prior notice. It
-              is uniquely Indian and gives the floor to issues that demand
-              immediate attention.
-            </p>
-          </div>
-        </div>
-        <div class="acc-item" data-testid="info-item-2">
-          <button class="acc-trigger">
-            <span class="acc-num">03</span>
-            <span class="acc-q">What is a No Confidence Motion?</span>
-            <svg class="acc-chev" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-          <div class="acc-content">
-            <p>
-              A No Confidence Motion is moved by the Opposition to test
-              whether the ruling government still holds the confidence of
-              the House. If passed, the Council of Ministers must resign —
-              a high-stakes test of political legitimacy.
-            </p>
-          </div>
-        </div>
-        <div class="acc-item" data-testid="info-item-3">
-          <button class="acc-trigger">
-            <span class="acc-num">04</span>
-            <span class="acc-q">Allowed Impeachment Motions</span>
-            <svg class="acc-chev" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-          <div class="acc-content">
-            <p>
-              Impeachment proceedings — against constitutional functionaries
-              such as the President, Judges of the Supreme Court and High
-              Courts — may be introduced under Articles 61, 124(4) and 217.
-              Procedure is strictly governed by Parliament's rules.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Ornament Divider -->
-  <div class="ornament" aria-hidden="true"><span class="ornament-diamond"></span></div>
-
-  <!-- ============ AWARDS ============ -->
-  <section id="awards" class="section section-dark" data-testid="awards-section">
-    <div class="dark-grid"></div>
-    <div class="dark-bloom dark-bloom-1"></div>
-    <div class="dark-bloom dark-bloom-2"></div>
-
-    <div class="container">
-      <div class="section-head reveal">
-        <span class="eyebrow eyebrow-gold">Honours of the House</span>
-        <h2 class="h2 h2-light">
-          Awards for the
-          <em class="ital-gold-light shimmer-text"> finest </em>
-          parliamentarians.
-        </h2>
-        <p class="dark-lede">
-          Eleven distinctions awarded to those who shape the discourse, command
-          the chamber, and elevate the proceedings.
-        </p>
-      </div>
-
-      <div class="awards-grid grid-3 reveal-stagger" id="awards-grid" data-testid="awards-grid"></div>
-    </div>
-  </section>
-
-  <!-- Ornament Divider -->
-  <div class="ornament" aria-hidden="true"><span class="ornament-diamond"></span></div>
-
-  <!-- ============ FOUNDERS + TEAM ============ -->
-
-  <section id="team" class="section section-white" data-testid="team-section">
-    <div class="container">
-      <div class="section-head reveal">
-        <span class="eyebrow">Founders</span>
-        <h2 class="h2">
-          The minds behind
-          <em class="ital-gold shimmer-text"> the chamber.</em>
-        </h2>
-      </div>
-
-      <div class="founders-portrait-grid reveal">
-        <article class="founder-portrait-card">
-          <div class="portrait-wrapper avatar founder-avatar" data-bio="true">
-            <img class="portrait-img" src="assets/team/shraddha.jpg" alt="Shraddha Kulkarni"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="portrait-fallback" style="display:none">SK</div>
-            <div class="portrait-bio">
-              <p>Diet coke>>>Water</p>
-            </div>
-          </div>
-          <div class="founder-info">
-            <h3 class="founder-name">Shraddha Kulkarni</h3>
-            <p class="kicker kicker-gold">Founder</p>
-          </div>
-        </article>
-
-        <article class="founder-portrait-card">
-          <div class="portrait-wrapper avatar founder-avatar" data-bio="true">
-            <img class="portrait-img" src="assets/team/keerath.jpg" alt="Keerath Singh"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="portrait-fallback" style="display:none">KS</div>
-            <div class="portrait-bio">
-              <p>"The Ragebaiter"</p>
-            </div>
-          </div>
-          <div class="founder-info">
-            <h3 class="founder-name">Keerath Singh</h3>
-            <p class="kicker kicker-gold">Co-Founder</p>
-          </div>
-        </article>
-      </div>
-
-      <div class="section-head reveal team-head">
-        <span class="eyebrow">The Secretariat</span>
-        <h2 class="h2">
-          The team that
-          <em class="ital-gold shimmer-text"> makes it run.</em>
-        </h2>
-      </div>
-
-      <div class="team-grid reveal-stagger" id="team-grid"></div>
-    </div>
-  </section>
-  <!-- ============ VENUE / FEE ============ -->
-  <section class="section section-cream" data-testid="venue-section">
-    <div class="container venue-grid">
-      <div class="reveal venue-text">
-        <span class="eyebrow">The Venue</span>
-        <h2 class="h2">
-          Shubhodaya
-          <em class="ital-gold shimmer-text"> Convention Hall</em>
-        </h2>
-        <p class="prose venue-prose">
-          A chamber befitting the gravity of the proceedings — chosen for
-          its scale, acoustics and dignity. Delegates will be hosted on-site
-          through the two days of debate.
-        </p>
-        <div class="venue-loc">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          <a href="https://maps.app.goo.gl/nJEgvFWXENCSmfT59" target="_blank" rel="noopener noreferrer"
-            style="color:inherit;text-decoration:none;">Shubhodaya Convention Hall, Hubli</a>
-        </div>
-        <button class="btn-primary venue-cta" data-open-register data-testid="venue-register-btn">
-          Reserve Your Seat
+        <button class="nav-item" data-view="web">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Web
         </button>
+        <button class="nav-item" data-view="forensics">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Forensics
+        </button>
+        <button class="nav-item" data-view="stego">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Stego
+        </button>
+        <button class="nav-item" data-view="reversing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          Reversing
+        </button>
+        <button class="nav-item" data-view="osint">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          OSINT
+        </button>
+        <button class="nav-item" data-view="pwn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Pwn
+        </button>
+        <button class="nav-item" data-view="terminal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          Terminal
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="version">v1.0.0</span>
+        <span class="made-by">by Sujanraj N</span>
       </div>
+    </aside>
 
-      <div class="reveal fee-card">
-        <div class="fee-bloom"></div>
-        <p class="kicker kicker-gold">Delegate Fee [early bird offer]</p>
-        <div class="fee-amount">
-          <span class="rupee">₹</span>
-          <span class="amount"> 599</span>
+    <main class="main-content" id="main-content">
+      <header class="topbar">
+        <button class="menu-toggle" id="menu-toggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <span id="view-title">Dashboard</span>
+          <span class="topbar-path" id="view-path">/home</span>
         </div>
-        <p class="fee-note">All-inclusive · Two days</p>
-        <div class="fee-divider"></div>
-        <p class="kicker kicker-gold">Includes</p>
-        <ul class="fee-list">
-          <li class="glass-dark">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 2l3 7v13M21 2l-3 7v13M9 2v9a3 3 0 0 0 6 0V2" />
-            </svg>
-            <span>Meals</span>
-          </li>
-          <li class="glass-dark">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 20v-8h20v8M4 12V8a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v4" />
-              <path d="M2 22h20" />
-            </svg>
-            <span>Accommodation</span>
-          </li>
-          <li class="glass-dark">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 12 20 22 4 22 4 12" />
-              <rect x="2" y="7" width="20" height="5" />
-              <line x1="12" y1="22" x2="12" y2="7" />
-              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-            </svg>
-            <span>Goodies</span>
-          </li>
-          <li class="glass-dark">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="8" r="6" />
-              <path d="M15.5 13L17 22l-5-3-5 3 1.5-9" />
-            </svg>
-            <span>Certificates</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ SPONSORS ============ -->
-  <section id="sponsors" class="section section-white sponsors-section" data-testid="sponsors-section">
-    <div class="container">
-      <div class="section-head reveal">
-        <span class="eyebrow">Backed by</span>
-        <h2 class="h2">
-          Our
-          <em class="ital-gold"> partners </em>
-          in this endeavour.
-        </h2>
-      </div>
-
-      <!-- Title sponsor -->
-      <div class="sponsor-tier reveal" data-testid="sponsor-tier-title">
-        <p class="tier-label">Title Sponsor</p>
-        <div class="sponsor-cards sponsor-cards-1">
-          <article class="sponsor-card sponsor-card-lg" data-testid="sponsor-midmac">
-            <div class="sponsor-logo-box">
-              <img src="assets/midmac.png" alt="MIDMAC Group" loading="lazy" />
-            </div>
-            <p class="sponsor-name-text">MIDMAC Group</p>
-          </article>
-        </div>
-      </div>
-
-      <!-- Associate sponsors -->
-      <div class="sponsor-tier reveal" data-testid="sponsor-tier-associate">
-        <p class="tier-label">Co-Sponsors</p>
-        <div class="sponsor-cards sponsor-cards-2">
-          <article class="sponsor-card" data-testid="sponsor-neelgund">
-            <div class="sponsor-logo-box">
-              <img src="assets/neelgund.png" alt="Neelgund Group" loading="lazy" />
-            </div>
-            <p class="sponsor-name-text">Neelgund Group</p>
-          </article>
-          <article class="sponsor-card" data-testid="sponsor-nikshep">
-            <div class="sponsor-logo-box">
-              <img src="assets/nikshep.jpeg" alt="Nikshep Developers" loading="lazy" />
-            </div>
-            <p class="sponsor-name-text">Nikshep Developers</p>
-          </article>
-        </div>
-      </div>
-
-      <!-- Co-sponsor -->
-      <div class="sponsor-tier reveal" data-testid="sponsor-tier-co">
-        <p class="tier-label">Associate Sponsors</p>
-        <div class="sponsor-cards sponsor-cards-1">
-          <article class="sponsor-card" data-testid="sponsor-radiant">
-            <div class="sponsor-logo-box">
-              <img src="assets/radiant.jpeg" alt="Radiant Mental Arithmetic" loading="lazy" />
-            </div>
-            <p class="sponsor-name-text">Radiant Mental Arithmetic</p>
-          </article>
-        </div>
-      </div>
-
-
-      <p class="sponsor-cta-text reveal">
-        Want your brand to share the stage? Write to
-        <a href="mailto:adhikar.hubli@gmail.com">adhikar.hubli@gmail.com</a>
-        for sponsorship enquiries.
-      </p>
-    </div>
-  </section>
-
-  <!-- ============ CONTACT ============ -->
-  <div class="container container-narrow">
-    <div class="section-head reveal">
-      <span class="eyebrow">Reach the Secretariat</span>
-      <h2 class="h2">
-        Address the
-        <em class="ital-gold"> Chair.</em>
-      </h2>
-      <p class="prose contact-lede">
-        For registrations, sponsorships or queries — the secretariat is
-        listening.
-      </p>
-    </div>
-
-    <div class="grid-3 contact-grid">
-      <article class="contact-card card-tilt reveal" data-testid="contact-phone-card">
-        <div class="card-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-          </svg>
-        </div>
-        <p class="kicker kicker-gold">Phone</p>
-        <a class="contact-value" href="tel:8073538399" data-testid="contact-phone-link">8073538399</a>
-      </article>
-      <article class="contact-card card-tilt reveal" data-testid="contact-email-card">
-        <div class="card-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-            <polyline points="22,6 12,13 2,6" />
-          </svg>
-        </div>
-        <p class="kicker kicker-gold">Email</p>
-        <a class="contact-value contact-value-sm" href="mailto:adhikar.hubli@gmail.com"
-          data-testid="contact-email-link">adhikar.hubli@gmail.com</a>
-      </article>
-      <article class="contact-card card-tilt reveal" data-testid="contact-venue-card">
-        <div class="card-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-        </div>
-        <p class="kicker kicker-gold">Venue</p>
-        <a class="contact-value contact-value-md" href="https://maps.app.goo.gl/nJEgvFWXENCSmfT59" target="_blank"
-          rel="noopener noreferrer" style="text-decoration:none;color:inherit;">Shubhodaya Convention Hall</a>
-      </article>
-    </div>
-
-    <div class="contact-cta-row">
-      <button class="btn-primary" data-open-register data-testid="contact-register-btn">
-        Register Now
-      </button>
-    </div>
-  </div>
-  </section>
-
-  <!-- ============ ADMIN SECTION ============ -->
-  <section id="admin" class="section section-dark admin-section" data-testid="admin-section">
-    <div class="dark-grid"></div>
-    <div class="container container-narrow">
-      <div class="section-head reveal" style="margin-bottom:2.5rem;">
-        <span class="eyebrow eyebrow-gold">Secretariat Access</span>
-        <h2 class="h2 h2-light">Admin Desk</h2>
-        <p class="dark-lede">
-          Authorised officers may sign in here to review delegate
-          registrations and verify payments.
-        </p>
-      </div>
-
-      <!-- Login -->
-      <div class="admin-login" id="admin-login" data-testid="admin-login">
-        <div class="admin-login-card">
-          <p class="kicker kicker-gold">Admin Sign-in</p>
-          <form id="admin-login-form" class="admin-login-form">
-            <label class="field field-dark">
-              <span class="field-label">Password</span>
-              <input type="password" id="admin-password" required data-testid="admin-password"
-                autocomplete="current-password" />
-            </label>
-            <div class="form-err" id="admin-err"></div>
-            <button type="submit" class="btn-primary admin-submit" data-testid="admin-login-btn">
-              Sign in
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <!-- Panel -->
-      <div class="admin-panel hidden" id="admin-panel" data-testid="admin-panel">
-        <div class="admin-topbar">
-          <div class="admin-stats-row">
-            <div class="admin-stats" id="admin-stats"></div>
-            <div class="admin-analytics" id="admin-analytics">
-              <!-- Visual bars will be injected here -->
-            </div>
-          </div>
-          <div class="admin-tools">
-            <button class="btn-ghost admin-refresh" id="admin-refresh">Refresh</button>
-            <button class="btn-ghost admin-export" id="admin-export" data-testid="admin-export">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Export All CSV
-            </button>
-            <button class="btn-ghost admin-verified-sheet" id="admin-verified-sheet"
-              style="color:#c9a961;border-color:rgba(201,169,97,0.4);" title="Download CSV of verified delegates only">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Verified Sheet
-            </button>
-            <button class="btn-ghost admin-refresh" id="admin-refresh" data-testid="admin-refresh">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-              Refresh
-            </button>
-            <button class="btn-ghost admin-verified-sheet" id="admin-view-overview"
-              style="color:#d4af37;border-color:rgba(212,175,55,0.4);" title="View grouping of assigned delegates">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="9" />
-                <rect x="14" y="3" width="7" height="5" />
-                <rect x="14" y="12" width="7" height="9" />
-                <rect x="3" y="16" width="7" height="5" />
-              </svg>
-              Assignment Overview
-            </button>
-            <button class="btn-ghost admin-logout" id="admin-logout" data-testid="admin-logout">
-              Sign out
-            </button>
-          </div>
-        </div>
-
-        <div class="admin-controls-bar">
-          <div class="admin-search-box">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input type="text" id="admin-search" placeholder="Search name, email, or phone..." />
-          </div>
-          <div class="admin-filter-chips">
-            <button class="filter-chip active" data-filter="all">All</button>
-            <button class="filter-chip" data-filter="pending">Pending</button>
-            <button class="filter-chip" data-filter="payment_claimed">Claimed</button>
-            <button class="filter-chip" data-filter="verified">Verified</button>
-            <button class="filter-chip" data-filter="rejected">Rejected</button>
-          </div>
-          <select id="admin-filter-college" class="admin-select">
-            <option value="all">All Institutions</option>
-          </select>
-        </div>
-
-        <div class="admin-table-wrap" id="admin-table-wrap">
-          <table class="admin-table" data-testid="admin-table">
-            <thead>
-              <tr>
-                <th>Delegate</th>
-                <th>Assignment</th>
-                <th>Parent/Guardian</th>
-                <th>Contact</th>
-                <th>Institution</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="admin-rows"></tbody>
-          </table>
-          <p class="admin-empty hidden" id="admin-empty">No registrations yet.</p>
-        </div>
-
-        <!-- Assignment Overview Section -->
-        <div class="admin-overview hidden" id="admin-overview">
-          <div class="overview-header">
-            <h3 class="overview-title">Assignment Dashboard</h3>
-            <p class="overview-subtitle">Grouped roster of verified delegates</p>
-          </div>
-          <div class="overview-grid">
-            <div class="overview-col">
-              <h4 class="overview-col-title">Parties</h4>
-              <div id="overview-parties" class="overview-list"></div>
-            </div>
-            <div class="overview-col">
-              <h4 class="overview-col-title">Committees</h4>
-              <div id="overview-committees" class="overview-list"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Parties & Committees sub-panel -->
-        <div class="parties-admin-panel">
-          <h3 class="parties-admin-title">Parties &amp; Committees</h3>
-          <form id="party-form" class="party-form">
-            <input type="text" id="party-name" placeholder="Name (e.g. BJP, Finance Committee)" required />
-            <select id="party-type">
-              <option value="party">Party</option>
-              <option value="committee">Committee</option>
-            </select>
-            <select id="party-side">
-              <option value="ruling">Ruling</option>
-              <option value="opposition">Opposition</option>
-              <option value="">N/A (Committee)</option>
-            </select>
-            <input type="text" id="party-desc" placeholder="Short description (optional)" />
-            <button type="submit" class="btn-primary" style="padding:0.5rem 1.2rem;font-size:0.85rem;">Add</button>
-          </form>
-          <div id="parties-admin-list" class="parties-admin-list"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ FOOTER ============ -->
-  <footer class="footer" data-testid="footer">
-    <div class="footer-grid"></div>
-    <div class="marquee">
-      <div class="marquee-track" id="marquee-track"></div>
-    </div>
-
-    <div class="container footer-inner">
-      <div>
-        <div class="footer-brand">
-          <img src="assets/logo.png" alt="Adhikar" />
-          <span>ADHIKAR<span class="footer-year">'26</span></span>
-        </div>
-        <p class="footer-tagline">
-          Empowering Voices. Shaping Leaders. A national mock parliament for
-          the next generation of statesmen.
-        </p>
-      </div>
-
-      <div>
-        <p class="kicker kicker-gold">Get in touch</p>
-        <ul class="footer-list">
-          <li><a href="tel:8073538399" data-testid="footer-phone">8073538399</a></li>
-          <li><a href="mailto:adhikar.hubli@gmail.com" data-testid="footer-email">adhikar.hubli@gmail.com</a></li>
-          <li class="muted">Shubhodaya Convention Hall, Hubli</li>
-        </ul>
-      </div>
-
-      <div>
-        <p class="kicker kicker-gold">Follow</p>
-        <a class="footer-insta" href="https://www.instagram.com/adhikar.hubballi" target="_blank"
-          rel="noopener noreferrer" data-testid="footer-instagram">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-            <line x1="17.5" y1="6.5" x2="17.5" y2="6.5" />
-          </svg>
-          <span>@adhikar.hubballi</span>
-        </a>
-      </div>
-    </div>
-
-    <div class="container footer-bottom">
-      <p>© 2026 ADHIKAR'26. All rights reserved. • <a href="privacy.html" style="text-decoration: underline;">Privacy
-          Policy</a></p>
-      <p class="ital-cream">Empowering Voices. Shaping Leaders.</p>
-      <p class="designer-credit" data-testid="designer-credit">
-        Curated by
-        <a href="https://www.linkedin.com/in/sujanraj-n-3793bb242/" target="_blank" rel="noopener noreferrer"
-          class="designer-name" style="text-decoration: none; color: inherit; font-weight: 600;">
-          Sujanraj N
-        </a>
-      </p>
-    </div>
-  </footer>
-
-  <!-- ============ REGISTRATION OVERLAY ============ -->
-  <div class="overlay hidden" id="register-overlay" role="dialog" aria-modal="true" data-testid="register-overlay">
-    <button class="overlay-close" id="overlay-close" aria-label="Close" data-testid="overlay-close">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
-      </svg>
-    </button>
-
-    <div class="overlay-inner">
-      <header class="overlay-head">
-        <div class="overlay-logo">
-          <img src="assets/logo.png" alt="Adhikar" />
-        </div>
-        <div>
-          <p class="kicker kicker-gold">ADHIKAR'26 Registration</p>
-          <h2 class="overlay-title">Claim your seat in the House.</h2>
+        <div class="topbar-actions">
+          <button class="topbar-btn" id="fullscreen-btn" title="Fullscreen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          </button>
         </div>
       </header>
 
-      <!-- Stepper -->
-      <div class="stepper" id="stepper">
-        <div class="step active" data-step="1">
-          <span class="step-num">1</span>
-          <span class="step-label">Your Details</span>
-        </div>
-        <div class="step-rail"></div>
-        <div class="step" data-step="2">
-          <span class="step-num">2</span>
-          <span class="step-label">Payment</span>
-        </div>
-        <div class="step-rail"></div>
-        <div class="step" data-step="3">
-          <span class="step-num">3</span>
-          <span class="step-label">Confirmation</span>
-        </div>
+      <div class="content-area" id="content-area">
+        <!-- DASHBOARD -->
+        <section class="view active" id="view-dashboard">
+          <div class="dashboard-stats">
+            <div class="stat-card glass" id="stat-tools"><div class="stat-value">0</div><div class="stat-label">Tools</div></div>
+            <div class="stat-card glass" id="stat-categories"><div class="stat-value">8</div><div class="stat-label">Categories</div></div>
+            <div class="stat-card glass" id="stat-kali"><div class="stat-value">---</div><div class="stat-label">Kali API</div></div>
+            <div class="stat-card glass" id="stat-server"><div class="stat-value">Online</div><div class="stat-label">Server</div></div>
+          </div>
+          <div class="section-header"><h2>CTF Categories</h2><p>Select a category to access specialized tools</p></div>
+          <div class="category-grid">
+            <div class="category-card" data-view="crypto" style="--accent:#00ff88">
+              <div class="cat-icon">🔐</div>
+              <h3>Cryptography</h3>
+              <p>RSA, AES, hashes, ciphers & more</p>
+              <span class="cat-tools">12 tools</span>
+            </div>
+            <div class="category-card" data-view="encoding" style="--accent:#ff6b6b">
+              <div class="cat-icon">🔡</div>
+              <h3>Encoder / Decoder</h3>
+              <p>Base64, Hex, ROT, XOR, Binary & more</p>
+              <span class="cat-tools">15 tools</span>
+            </div>
+            <div class="category-card" data-view="web" style="--accent:#ffd93d">
+              <div class="cat-icon">🌐</div>
+              <h3>Web Security</h3>
+              <p>URL decode, DNS, headers, SQLi</p>
+              <span class="cat-tools">6 tools</span>
+            </div>
+            <div class="category-card" data-view="forensics" style="--accent:#6c5ce7">
+              <div class="cat-icon">🔍</div>
+              <h3>Forensics</h3>
+              <p>Hex view, strings, file signatures</p>
+              <span class="cat-tools">5 tools</span>
+            </div>
+            <div class="category-card" data-view="stego" style="--accent:#fd79a8">
+              <div class="cat-icon">🖼️</div>
+              <h3>Steganography</h3>
+              <p>LSB analysis, metadata</p>
+              <span class="cat-tools">3 tools</span>
+            </div>
+            <div class="category-card" data-view="reversing" style="--accent:#00cec9">
+              <div class="cat-icon">🔄</div>
+              <h3>Reversing</h3>
+              <p>Disassembly, analysis</p>
+              <span class="cat-tools">4 tools</span>
+            </div>
+            <div class="category-card" data-view="osint" style="--accent:#e17055">
+              <div class="cat-icon">🌍</div>
+              <h3>OSINT</h3>
+              <p>IP lookup, DNS, whois</p>
+              <span class="cat-tools">3 tools</span>
+            </div>
+            <div class="category-card" data-view="pwn" style="--accent:#a29bfe">
+              <div class="cat-icon">⚔️</div>
+              <h3>Pwn / Exploit</h3>
+              <p>ROP, shellcode, pwntools</p>
+              <span class="cat-tools">4 tools</span>
+            </div>
+          </div>
+          <div class="section-header" style="margin-top:2rem"><h2>Quick Tools</h2></div>
+          <div class="quick-tools">
+            <button class="quick-tool" onclick="navigateTo('crypto','base64')"><span class="qt-icon">B64</span>Base64</button>
+            <button class="quick-tool" onclick="navigateTo('crypto','hex')"><span class="qt-icon">0x</span>Hex</button>
+            <button class="quick-tool" onclick="navigateTo('crypto','rot')"><span class="qt-icon">R</span>ROT13</button>
+            <button class="quick-tool" onclick="navigateTo('crypto','xor')"><span class="qt-icon">⊕</span>XOR</button>
+            <button class="quick-tool" onclick="navigateTo('crypto','hash')"><span class="qt-icon">#</span>Hash</button>
+            <button class="quick-tool" onclick="navigateTo('crypto','rsa')"><span class="qt-icon">R</span>RSA</button>
+            <button class="quick-tool" onclick="navigateTo('encoding','all')"><span class="qt-icon">E</span>Encoder</button>
+            <button class="quick-tool" onclick="navigateTo('terminal','')"><span class="qt-icon">></span>Terminal</button>
+          </div>
+        </section>
+
+        <!-- CRYPTO -->
+        <section class="view" id="view-crypto">
+          <div class="tool-tabs">
+            <button class="tab active" data-tab="base64">Base64</button>
+            <button class="tab" data-tab="hex">Hex</button>
+            <button class="tab" data-tab="rot">ROT/Caesar</button>
+            <button class="tab" data-tab="xor">XOR</button>
+            <button class="tab" data-tab="vigenere">Vigenere</button>
+            <button class="tab" data-tab="morse">Morse</button>
+            <button class="tab" data-tab="atbash">Atbash</button>
+            <button class="tab" data-tab="hash">Hash</button>
+            <button class="tab" data-tab="rsa">RSA</button>
+            <button class="tab" data-tab="binary">Binary</button>
+          </div>
+          <div class="tool-panels">
+            <!-- Base64 -->
+            <div class="tool-panel active" id="panel-base64">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input Text</label>
+                  <textarea id="b64-input" rows="4" placeholder="Enter text or base64..." oninput="b64Auto()"></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="b64-output" rows="4" readonly placeholder="Result..."></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="b64Encode()">Encode</button>
+                <button class="btn" onclick="b64Decode()">Decode</button>
+                <button class="btn btn-clear" onclick="clearIO('b64')">Clear</button>
+              </div>
+            </div>
+            <!-- Hex -->
+            <div class="tool-panel" id="panel-hex">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input</label>
+                  <textarea id="hex-input" rows="4" placeholder="Text or hex (without spaces)..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="hex-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="hexEncode()">Text → Hex</button>
+                <button class="btn" onclick="hexDecode()">Hex → Text</button>
+                <button class="btn" onclick="hexToDec()">Hex → Decimal</button>
+                <button class="btn btn-clear" onclick="clearIO('hex')">Clear</button>
+              </div>
+            </div>
+            <!-- ROT/Caesar -->
+            <div class="tool-panel" id="panel-rot">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input Text</label>
+                  <textarea id="rot-input" rows="4" placeholder="Enter text..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="rot-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-controls">
+                <label>Shift: <input type="number" id="rot-shift" value="13" min="1" max="25" /></label>
+                <button class="btn" onclick="rotEncode()">Apply ROT</button>
+                <button class="btn" onclick="rotBruteForce()">Brute Force (1-25)</button>
+                <button class="btn btn-clear" onclick="clearIO('rot')">Clear</button>
+              </div>
+              <div id="rot-results" class="brute-results"></div>
+            </div>
+            <!-- XOR -->
+            <div class="tool-panel" id="panel-xor">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input Text (hex or string)</label>
+                  <textarea id="xor-input" rows="3" placeholder="Enter text or hex..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="xor-output" rows="3" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-controls">
+                <label>Key: <input type="text" id="xor-key" value="key" /></label>
+                <label>Format: <select id="xor-format"><option value="text">Text</option><option value="hex">Hex</option></select></label>
+                <button class="btn" onclick="xorDecode()">XOR</button>
+                <button class="btn" onclick="xorBrute()">Brute Single Byte</button>
+                <button class="btn btn-clear" onclick="clearIO('xor')">Clear</button>
+              </div>
+              <div id="xor-results" class="brute-results"></div>
+            </div>
+            <!-- Vigenere -->
+            <div class="tool-panel" id="panel-vigenere">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input Text</label>
+                  <textarea id="vig-input" rows="4" placeholder="Enter ciphertext..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="vig-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-controls">
+                <label>Key: <input type="text" id="vig-key" placeholder="Enter key..." /></label>
+                <button class="btn" onclick="vigEncode()">Encrypt</button>
+                <button class="btn" onclick="vigDecode()">Decrypt</button>
+                <button class="btn btn-clear" onclick="clearIO('vig')">Clear</button>
+              </div>
+            </div>
+            <!-- Morse -->
+            <div class="tool-panel" id="panel-morse">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input</label>
+                  <textarea id="morse-input" rows="4" placeholder="Text or Morse code..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="morse-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="morseEncode()">Text → Morse</button>
+                <button class="btn" onclick="morseDecode()">Morse → Text</button>
+                <button class="btn btn-clear" onclick="clearIO('morse')">Clear</button>
+              </div>
+            </div>
+            <!-- Atbash -->
+            <div class="tool-panel" id="panel-atbash">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input Text</label>
+                  <textarea id="atbash-input" rows="4" placeholder="Enter text..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="atbash-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="atbashEncode()">Apply Atbash</button>
+                <button class="btn btn-clear" onclick="clearIO('atbash')">Clear</button>
+              </div>
+            </div>
+            <!-- Hash -->
+            <div class="tool-panel" id="panel-hash">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input Text</label>
+                  <textarea id="hash-input" rows="3" placeholder="Text to hash..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Hash Output</label>
+                  <textarea id="hash-output" rows="6" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="hashGenerate('md5')">MD5</button>
+                <button class="btn" onclick="hashGenerate('sha1')">SHA1</button>
+                <button class="btn" onclick="hashGenerate('sha256')">SHA256</button>
+                <button class="btn" onclick="hashGenerate('sha512')">SHA512</button>
+                <button class="btn btn-clear" onclick="clearIO('hash')">Clear</button>
+              </div>
+            </div>
+            <!-- RSA -->
+            <div class="tool-panel" id="panel-rsa">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>RSA Parameters</label>
+                  <div class="field"><label>n (modulus):</label><input type="text" id="rsa-n" placeholder="n" /></div>
+                  <div class="field"><label>e (exponent):</label><input type="text" id="rsa-e" placeholder="65537" value="65537" /></div>
+                  <div class="field"><label>c (ciphertext):</label><input type="text" id="rsa-c" placeholder="c" /></div>
+                  <div class="field"><label>p (optional):</label><input type="text" id="rsa-p" placeholder="p" /></div>
+                  <div class="field"><label>q (optional):</label><input type="text" id="rsa-q" placeholder="q" /></div>
+                  <div class="field"><label>d (optional):</label><input type="text" id="rsa-d" placeholder="d" /></div>
+                </div>
+                <div class="tool-input-group">
+                  <label>Results</label>
+                  <textarea id="rsa-output" rows="10" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="rsaFactor()">Try FactorDB</button>
+                <button class="btn" onclick="rsaDecrypt()">Decrypt</button>
+                <button class="btn" onclick="rsaWiener()">Wiener Attack</button>
+                <button class="btn btn-clear" onclick="clearIO('rsa')">Clear</button>
+              </div>
+            </div>
+            <!-- Binary -->
+            <div class="tool-panel" id="panel-binary">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input</label>
+                  <textarea id="bin-input" rows="4" placeholder="Text or binary (0101 0110)..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="bin-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="binEncode()">Text → Binary</button>
+                <button class="btn" onclick="binDecode()">Binary → Text</button>
+                <button class="btn btn-clear" onclick="clearIO('bin')">Clear</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ENCODING (Universal Encoder) -->
+        <section class="view" id="view-encoding">
+          <div class="tool-tabs">
+            <button class="tab active" data-tab="enc-all">Universal Encoder</button>
+            <button class="tab" data-tab="enc-url">URL</button>
+            <button class="tab" data-tab="enc-html">HTML Entities</button>
+            <button class="tab" data-tab="enc-unicode">Unicode</button>
+          </div>
+          <div class="tool-panels">
+            <div class="tool-panel active" id="panel-enc-all">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input Text</label>
+                  <textarea id="enc-input" rows="4" placeholder="Enter text..." oninput="universalEncode()"></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="enc-output" rows="10" readonly></textarea>
+                </div>
+              </div>
+              <div class="enc-results" id="enc-results">
+                <div class="enc-row"><span class="enc-label">Base64:</span><code id="enc-base64">-</code><button class="copy-btn" data-target="enc-base64">Copy</button></div>
+                <div class="enc-row"><span class="enc-label">Base32:</span><code id="enc-base32">-</code><button class="copy-btn" data-target="enc-base32">Copy</button></div>
+                <div class="enc-row"><span class="enc-label">Hex:</span><code id="enc-hex">-</code><button class="copy-btn" data-target="enc-hex">Copy</button></div>
+                <div class="enc-row"><span class="enc-label">Binary:</span><code id="enc-binary">-</code><button class="copy-btn" data-target="enc-binary">Copy</button></div>
+                <div class="enc-row"><span class="enc-label">ROT13:</span><code id="enc-rot13">-</code><button class="copy-btn" data-target="enc-rot13">Copy</button></div>
+                <div class="enc-row"><span class="enc-label">URL Encoded:</span><code id="enc-url">-</code><button class="copy-btn" data-target="enc-url">Copy</button></div>
+                <div class="enc-row"><span class="enc-label">HTML Entities:</span><code id="enc-html">-</code><button class="copy-btn" data-target="enc-html">Copy</button></div>
+                <div class="enc-row"><span class="enc-label">Unicode Esc:</span><code id="enc-unicode">-</code><button class="copy-btn" data-target="enc-unicode">Copy</button></div>
+                <div class="enc-row"><span class="enc-label">Reverse:</span><code id="enc-reverse">-</code><button class="copy-btn" data-target="enc-reverse">Copy</button></div>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-enc-url">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input</label>
+                  <textarea id="url-input" rows="4" placeholder="URL or text..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="url-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="urlEncode()">Encode</button>
+                <button class="btn" onclick="urlDecode()">Decode</button>
+                <button class="btn btn-clear" onclick="clearIO('url')">Clear</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-enc-html">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input</label>
+                  <textarea id="html-input" rows="4" placeholder="Text or HTML entities..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="html-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="htmlEncode()">Encode</button>
+                <button class="btn" onclick="htmlDecode()">Decode</button>
+                <button class="btn btn-clear" onclick="clearIO('html')">Clear</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-enc-unicode">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Input</label>
+                  <textarea id="uni-input" rows="4" placeholder="Text or \\uXXXX..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="uni-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="uniEncode()">Text → \\uXXXX</button>
+                <button class="btn" onclick="uniDecode()">\\uXXXX → Text</button>
+                <button class="btn btn-clear" onclick="clearIO('uni')">Clear</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- WEB -->
+        <section class="view" id="view-web">
+          <div class="tool-tabs">
+            <button class="tab active" data-tab="web-url">URL Tools</button>
+            <button class="tab" data-tab="web-dns">DNS Lookup</button>
+            <button class="tab" data-tab="web-headers">HTTP Headers</button>
+            <button class="tab" data-tab="web-sqli">SQLi Test</button>
+          </div>
+          <div class="tool-panels">
+            <div class="tool-panel active" id="panel-web-url">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>URL</label>
+                  <textarea id="web-url-input" rows="3" placeholder="Enter URL..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Parsed Components</label>
+                  <textarea id="web-url-output" rows="6" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webParseUrl()">Parse URL</button>
+                <button class="btn" onclick="webExtractParams()">Extract Params</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-web-dns">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Domain/Host</label>
+                  <input type="text" id="web-dns-input" placeholder="example.com" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Result</label>
+                  <textarea id="web-dns-output" rows="6" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webDnsLookup('A')">A Record</button>
+                <button class="btn" onclick="webDnsLookup('MX')">MX Record</button>
+                <button class="btn" onclick="webDnsLookup('NS')">NS Record</button>
+                <button class="btn" onclick="webDnsLookup('TXT')">TXT Record</button>
+                <button class="btn" onclick="webDnsLookup('ALL')">All</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-web-headers">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>URL</label>
+                  <input type="text" id="web-headers-input" placeholder="https://example.com" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Response Headers</label>
+                  <textarea id="web-headers-output" rows="8" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webFetchHeaders()">Fetch Headers</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-web-sqli">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>SQL Injection Test Payloads</label>
+                  <textarea id="web-sqli-input" rows="4" placeholder='{"url":"http://target.com/page?id=1","param":"id"}'></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Results</label>
+                  <textarea id="web-sqli-output" rows="8" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webSqliTest()">Test Payloads</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- FORENSICS -->
+        <section class="view" id="view-forensics">
+          <div class="tool-tabs">
+            <button class="tab active" data-tab="for-hex">Hex Viewer</button>
+            <button class="tab" data-tab="for-strings">Strings</button>
+            <button class="tab" data-tab="for-signature">File Signatures</button>
+            <button class="tab" data-tab="for-entropy">Entropy</button>
+          </div>
+          <div class="tool-panels">
+            <div class="tool-panel active" id="panel-for-hex">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Text or Data</label>
+                  <textarea id="for-hex-input" rows="4" placeholder="Enter text to view as hex..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Hex Dump</label>
+                  <textarea id="for-hex-output" rows="8" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="forHexDump()">Generate Hex Dump</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-for-strings">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Data (paste hex or text)</label>
+                  <textarea id="for-str-input" rows="4" placeholder="Paste hex-encoded data or text..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Extracted Strings</label>
+                  <textarea id="for-str-output" rows="6" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="forExtractStrings()">Extract Strings</button>
+                <button class="btn" onclick="forExtractHexStrings()">From Hex</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-for-signature">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Hex Signature (first bytes)</label>
+                  <input type="text" id="for-sig-input" placeholder="e.g. 89504E47" />
+                </div>
+                <div class="tool-input-group">
+                  <label>File Type</label>
+                  <textarea id="for-sig-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="forIdentifySignature()">Identify</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-for-entropy">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Data</label>
+                  <textarea id="for-entropy-input" rows="4" placeholder="Enter text to calculate entropy..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Results</label>
+                  <textarea id="for-entropy-output" rows="4" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="forCalcEntropy()">Calculate Entropy</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEGO -->
+        <section class="view" id="view-stego">
+          <div class="section-header"><h2>Steganography Tools</h2></div>
+          <div class="tool-grid-2">
+            <div class="tool-card">
+              <h3>LSB Analysis</h3>
+              <p>Analyze text for hidden LSB data. Paste ASCII binary or text.</p>
+              <textarea id="stego-lsb-input" rows="4" placeholder="Text or binary data to analyze..."></textarea>
+              <button class="btn" onclick="stegoLsbExtract()">Extract LSB</button>
+              <textarea id="stego-lsb-output" rows="3" readonly></textarea>
+            </div>
+            <div class="tool-card">
+              <h3>Metadata / EXIF</h3>
+              <p>Paste base64 encoded image data or enter image URL (requires Kali).</p>
+              <input type="text" id="stego-meta-input" placeholder="Image URL or file path..." />
+              <button class="btn" onclick="stegoMetadata()">Analyze (Kali)</button>
+              <textarea id="stego-meta-output" rows="4" readonly></textarea>
+            </div>
+            <div class="tool-card">
+              <h3>Whitespace Decoder</h3>
+              <p>Detect hidden data in whitespace (tabs vs spaces).</p>
+              <textarea id="stego-ws-input" rows="4" placeholder="Paste text with suspicious whitespace..."></textarea>
+              <button class="btn" onclick="stegoWhitespace()">Analyze Whitespace</button>
+              <textarea id="stego-ws-output" rows="3" readonly></textarea>
+            </div>
+            <div class="tool-card">
+              <h3>Base64 in Images</h3>
+              <p>Check if text might be base64-encoded image data.</p>
+              <textarea id="stego-b64img-input" rows="4" placeholder="Paste suspicious base64..."></textarea>
+              <button class="btn" onclick="stegoCheckB64Image()">Check Image B64</button>
+              <textarea id="stego-b64img-output" rows="3" readonly></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- REVERSING -->
+        <section class="view" id="view-reversing">
+          <div class="tool-tabs">
+            <button class="tab active" data-tab="rev-disasm">Disassembly</button>
+            <button class="tab" data-tab="rev-strings">Binary Strings</button>
+            <button class="tab" data-tab="rev-pe">PE Analysis</button>
+          </div>
+          <div class="tool-panels">
+            <div class="tool-panel active" id="panel-rev-disasm">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Assembly (or paste hex bytes)</label>
+                  <textarea id="rev-disasm-input" rows="4" placeholder="Paste hex bytes like: 90 90 90 90 55 48 89 e5..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Disassembly (Conceptual)</label>
+                  <textarea id="rev-disasm-output" rows="8" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="revDisasm()">Disassemble</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-rev-strings">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Hex Data</label>
+                  <textarea id="rev-str-input" rows="4" placeholder="Paste hex-encoded binary data..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Printable Strings</label>
+                  <textarea id="rev-str-output" rows="6" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="revExtractStrings()">Extract Strings</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-rev-pe">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>PE Hex Header</label>
+                  <textarea id="rev-pe-input" rows="4" placeholder="Paste hex bytes of PE header starting with 4D 5A..."></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Analysis</label>
+                  <textarea id="rev-pe-output" rows="8" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="revAnalyzePE()">Analyze PE Header</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- OSINT -->
+        <section class="view" id="view-osint">
+          <div class="tool-tabs">
+            <button class="tab active" data-tab="osint-ip">IP Lookup</button>
+            <button class="tab" data-tab="osint-domain">Domain Recon</button>
+            <button class="tab" data-tab="osint-email">Email Lookup</button>
+          </div>
+          <div class="tool-panels">
+            <div class="tool-panel active" id="panel-osint-ip">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>IP Address</label>
+                  <input type="text" id="osint-ip-input" placeholder="8.8.8.8" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Information</label>
+                  <textarea id="osint-ip-output" rows="8" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="osintIpLookup()">Lookup IP</button>
+                <button class="btn" onclick="osintMyIp()">My IP</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-osint-domain">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Domain</label>
+                  <input type="text" id="osint-domain-input" placeholder="example.com" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Results</label>
+                  <textarea id="osint-domain-output" rows="8" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="osintDomainRecon()">Recon</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-osint-email">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Email</label>
+                  <input type="text" id="osint-email-input" placeholder="email@example.com" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Info</label>
+                  <textarea id="osint-email-output" rows="6" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="osintEmailLookup()">Analyze Email</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PWN -->
+        <section class="view" id="view-pwn">
+          <div class="tool-tabs">
+            <button class="tab active" data-tab="pwn-pwntools">pwntools Gen</button>
+            <button class="tab" data-tab="pwn-shellcode">Shellcode</button>
+            <button class="tab" data-tab="pwn-pattern">Pattern</button>
+          </div>
+          <div class="tool-panels">
+            <div class="tool-panel active" id="panel-pwn-pwntools">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Exploit Parameters</label>
+                  <div class="field"><label>Target:</label><input type="text" id="pwn-target" placeholder="localhost:1337" /></div>
+                  <div class="field"><label>Arch:</label><select id="pwn-arch"><option value="amd64">amd64</option><option value="i386">i386</option></select></div>
+                  <div class="field"><label>Offset:</label><input type="text" id="pwn-offset" placeholder="72" /></div>
+                  <div class="field"><label>Win function:</label><input type="text" id="pwn-win" placeholder="win" /></div>
+                </div>
+                <div class="tool-input-group">
+                  <label>Generated Script</label>
+                  <textarea id="pwn-script-output" rows="12" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="pwnGenRet2Win()">Generate ret2win</button>
+                <button class="btn" onclick="pwnGenShellcodeRunner()">Shellcode Runner</button>
+                <button class="btn" onclick="pwnGenRopchain()">Generate ROP</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-pwn-shellcode">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Architecture</label>
+                  <select id="pwn-shell-arch"><option value="amd64">x86-64</option><option value="x86">x86</option></select>
+                  <label>Shell type</label>
+                  <select id="pwn-shell-type"><option value="execve">execve(/bin/sh)</option><option value="bind">Bind shell</option></select>
+                </div>
+                <div class="tool-input-group">
+                  <label>Shellcode (hex bytes)</label>
+                  <textarea id="pwn-shell-output" rows="6" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="pwnGenShellcode()">Generate /bin/sh</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-pwn-pattern">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Pattern length</label>
+                  <input type="number" id="pwn-pattern-length" value="100" min="10" max="10000" />
+                  <button class="btn" onclick="pwnGenPattern()">Generate Pattern</button>
+                </div>
+                <div class="tool-input-group">
+                  <label>Output</label>
+                  <textarea id="pwn-pattern-output" rows="6" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Find offset (enter value from RSP)</label>
+                  <input type="text" id="pwn-pattern-find" placeholder="0x6161616c" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Offset</label>
+                  <textarea id="pwn-pattern-find-output" rows="2" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="pwnFindOffset()">Find Offset</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TERMINAL -->
+        <section class="view" id="view-terminal">
+          <div class="terminal-container">
+            <div class="terminal-header">
+              <span class="terminal-title">Command Terminal</span>
+              <div class="terminal-controls">
+                <button class="btn btn-sm" onclick="terminalClear()">Clear</button>
+                <button class="btn btn-sm" onclick="terminalKill()">Kill</button>
+              </div>
+            </div>
+            <div class="terminal-output" id="terminal-output">
+              <div class="term-line"><span class="term-green">sujan@ctfsolver</span><span class="term-colon">:</span><span class="term-blue">~</span><span class="term-dollar">$</span> Welcome to SUJANSCTFSOLVER</div>
+              <div class="term-line"><span class="term-green">sujan@ctfsolver</span><span class="term-colon">:</span><span class="term-blue">~</span><span class="term-dollar">$</span> Type a command below or use shortcuts</div>
+            </div>
+            <div class="terminal-input-row">
+              <span class="term-prompt"><span class="term-green">sujan</span>@<span class="term-blue">ctfsolver</span> ~ $</span>
+              <input type="text" id="terminal-input" placeholder="Enter command..." autofocus />
+              <button class="btn" onclick="terminalExecute()">Run</button>
+            </div>
+            <div class="terminal-shortcuts">
+              <button class="term-shortcut" onclick="terminalQuick('nmap -sV localhost')">nmap localhost</button>
+              <button class="term-shortcut" onclick="terminalQuick('whoami')">whoami</button>
+              <button class="term-shortcut" onclick="terminalQuick('ipconfig')">ipconfig</button>
+              <button class="term-shortcut" onclick="terminalQuick('dir')">dir</button>
+              <button class="term-shortcut" onclick="terminalQuick('ping -n 1 8.8.8.8')">ping</button>
+              <button class="term-shortcut" onclick="terminalQuick('curl -I https://example.com')">curl -I</button>
+            </div>
+          </div>
+        </section>
       </div>
-
-      <!-- Step 1: Form -->
-      <section class="reg-step" id="step-1" data-testid="reg-step-1">
-        <form id="reg-form" class="reg-form" novalidate>
-          <div class="field-grid">
-            <label class="field">
-              <span class="field-label">Full Name *</span>
-              <input type="text" name="name" required autocomplete="name" data-testid="reg-name" />
-            </label>
-            <label class="field field-wide">
-              <span class="field-label">Email *</span>
-              <div class="email-otp-row">
-                <input type="email" name="email" required autocomplete="email" data-testid="reg-email"
-                  id="reg-email-input" />
-                <button type="button" class="btn-ghost otp-send-btn" id="otp-send-btn" disabled>Send OTP</button>
-              </div>
-            </label>
-            <div class="field field-wide otp-block hidden" id="otp-block">
-              <span class="field-label">Verification Code <span class="optional">· sent to your inbox</span></span>
-              <div class="otp-input-row">
-                <input type="text" id="otp-input" maxlength="6" placeholder="6-digit code" inputmode="numeric"
-                  autocomplete="one-time-code" />
-                <button type="button" class="btn-primary otp-verify-btn" id="otp-verify-btn">Verify</button>
-              </div>
-              <div class="otp-footer">
-                <span class="otp-verified-msg hidden" id="otp-verified-msg">✓ Email verified</span>
-                <button type="button" class="link-btn hidden" id="otp-resend-btn">Resend in <span
-                    id="otp-countdown">60</span>s</button>
-              </div>
-            </div>
-            <label class="field">
-              <span class="field-label">Phone (WhatsApp) *</span>
-              <input type="tel" name="phone" required pattern="[0-9 +\-]{7,15}" autocomplete="tel"
-                data-testid="reg-phone" />
-            </label>
-            <label class="field">
-              <span class="field-label">Parent / Guardian Name *</span>
-              <input type="text" name="parent_name" required data-testid="reg-parent-name" />
-            </label>
-            <label class="field">
-              <span class="field-label">Parent / Guardian Phone *</span>
-              <input type="tel" name="parent_phone" required pattern="[0-9 +\-]{7,15}" data-testid="reg-parent-phone" />
-            </label>
-            <label class="field">
-              <span class="field-label">Year of Study *</span>
-              <select name="year" required data-testid="reg-year">
-                <option value="">Select…</option>
-                <option>9th Standard</option>
-                <option>10th Standard</option>
-                <option>11th Standard</option>
-                <option>12th Standard</option>
-                <option></option>
-                <option>Other</option>
-              </select>
-            </label>
-            <label class="field field-wide">
-              <span class="field-label">College / Institution *</span>
-              <input type="text" name="college" required data-testid="reg-college" />
-            </label>
-            <label class="field field-wide">
-              <span class="field-label">Preferred Role</span>
-              <select name="role_preference" data-testid="reg-role">
-                <option>No Preference</option>
-                <option>Ruling Government</option>
-                <option>Opposition</option>
-              </select>
-            </label>
-            <label class="field field-wide">
-              <span class="field-label">Anything we should know? <span class="optional">(optional)</span></span>
-              <textarea name="notes" rows="3" data-testid="reg-notes"
-                placeholder="Dietary restrictions, accessibility needs, preferred portfolio, etc."></textarea>
-            </label>
-          </div>
-
-          <div class="form-err" id="form-err"></div>
-
-          <div class="reg-actions">
-            <button type="submit" class="btn-primary" id="form-submit-btn" data-testid="reg-submit">
-              Proceed to Payment
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <polyline points="12 5 19 12 12 19" />
-              </svg>
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <!-- Step 2: Payment -->
-      <section class="reg-step hidden" id="step-2" data-testid="reg-step-2">
-        <div class="pay-grid">
-          <div class="pay-summary">
-            <p class="kicker kicker-gold">Booking Summary</p>
-            <div class="summary-rows" id="summary-rows"></div>
-
-            <div class="summary-total">
-              <span>Total payable</span>
-              <span class="summary-amount">₹599</span>
-            </div>
-
-            <button class="link-btn" id="back-to-form" data-testid="reg-back">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-              Edit details
-            </button>
-          </div>
-
-          <div class="pay-card">
-            <div class="pay-bloom"></div>
-            <p class="kicker kicker-gold">Pay via UPI</p>
-            <h3 class="pay-amount">₹ 599</h3>
-            <p class="pay-note">Scan with any UPI app · PhonePe, GPay, Paytm, BHIM</p>
-
-            <div class="upi-meta">
-              <div class="upi-row">
-                <span class="upi-k">Pay to</span>
-                <span class="upi-v" id="upi-payee-name">ADHIKAR'26</span>
-              </div>
-              <div class="upi-row">
-                <span class="upi-k">UPI ID</span>
-                <button class="upi-v upi-copy" id="upi-copy-vpa" data-testid="upi-copy-vpa">
-                  <span id="upi-vpa">9980964089@cnrb</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                </button>
-              </div>
-              <div class="upi-row">
-                <span class="upi-k">Phone</span>
-                <button class="upi-v upi-copy" id="upi-copy-phone" data-testid="upi-copy-phone">
-                  <span>9980964089</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <a id="phonepe-link" class="btn-primary pay-cta" href="#" data-testid="reg-pay-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="6" width="20" height="12" rx="2" />
-                <line x1="2" y1="10" x2="22" y2="10" />
-              </svg>
-              Pay ₹599 with UPI
-            </a>
-
-            <p class="pay-hint">Opens any UPI app installed on your phone.</p>
-
-            <!-- UPI app shortcuts -->
-            <div class="upi-apps" data-testid="upi-apps">
-              <a class="upi-app upi-app-phonepe" id="pay-phonepe" href="#" data-testid="pay-phonepe">
-                <span class="upi-app-mark">P</span>
-                <span>PhonePe</span>
-              </a>
-              <a class="upi-app upi-app-gpay" id="pay-gpay" href="#" data-testid="pay-gpay">
-                <span class="upi-app-mark">G</span>
-                <span>Google Pay</span>
-              </a>
-              <a class="upi-app upi-app-bhim" id="pay-bhim" href="#" data-testid="pay-bhim">
-                <span class="upi-app-mark">B</span>
-                <span>BHIM</span>
-              </a>
-              <a class="upi-app upi-app-apple" id="pay-apple" href="#" data-testid="pay-apple">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M19 17.5c-.39.9-.86 1.74-1.42 2.5-.77 1.05-1.4 1.77-1.89 2.17-.76.61-1.58.93-2.46.95-.63 0-1.39-.18-2.27-.54-.88-.36-1.69-.54-2.43-.54-.78 0-1.61.18-2.5.54-.89.36-1.61.55-2.16.57-.84.04-1.68-.29-2.51-.99-.53-.43-1.18-1.17-1.96-2.22C.97 18.61.29 17.04.05 15.38-.21 13.59-.05 12 .55 10.61c.47-1.09 1.16-1.98 2.07-2.67.91-.69 1.9-1.04 2.97-1.06.67 0 1.55.21 2.65.62 1.09.41 1.79.62 2.1.62.23 0 1-.24 2.31-.73 1.23-.45 2.28-.64 3.13-.57 2.32.19 4.05 1.11 5.2 2.78-2.07 1.26-3.1 3.02-3.07 5.29.02 1.76.66 3.23 1.91 4.4.57.54 1.21.96 1.92 1.26-.15.44-.32.86-.5 1.27zM15.65 0c0 1.33-.49 2.57-1.46 3.72-1.17 1.37-2.59 2.16-4.13 2.04-.02-.16-.03-.33-.03-.5 0-1.27.55-2.62 1.54-3.74C12.04.97 12.61.5 13.27.18c.66-.32 1.28-.51 1.87-.55.02.13.02.26.02.37z" />
-                </svg>
-                <span>Apple Pay (UPI)</span>
-              </a>
-            </div>
-
-            <!-- QR code -->
-            <div class="qr-section" data-testid="upi-qr-section">
-              <div class="qr-box">
-                <img id="qr-image" src="assets/fallback_qr.jpeg" alt="Scan to pay ₹599 — Canara Bank UPI"
-                  loading="lazy" />
-              </div>
-              <div class="qr-meta">
-                <p class="kicker kicker-gold">Or scan to pay</p>
-                <p class="qr-help">Open any UPI app → tap scan → point camera at the code.</p>
-              </div>
-            </div>
-
-            <div class="pay-divider"></div>
-            <form id="utr-form" class="utr-form" style="margin-top: 1.5rem;">
-              <label class="field">
-                <span class="field-label">Submit 12-Digit UPI Transaction ID / UTR *</span>
-                <input type="text" id="utr-input" placeholder="Enter UTR Number" required pattern="\d{12}"
-                  maxlength="12" data-testid="utr-input"
-                  style="font-family: inherit; font-size: 1rem; width: 100%; box-sizing: border-box; color: white; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); padding: 0.8rem; border-radius: 8px;" />
-                <span class="field-hint" style="font-size: 0.8rem; color: #bca0a0; display: block; margin-top: 0.4rem;">
-                  You will find the 12-digit UPI reference/UTR number on your payment confirmation screen.
-                </span>
-              </label>
-              <div class="form-err" id="utr-err"
-                style="color: #ff6b6b; font-size: 0.9rem; margin-top: 0.5rem; display: none;"></div>
-              <button type="submit" class="btn-primary pay-claimed-btn" id="pay-claimed-btn"
-                data-testid="reg-pay-claimed" style="width: 100%; margin-top: 1rem;">
-                I've Paid — Submit Registration
-              </button>
-            </form>
-      </section>
-
-      <!-- Step 3: Confirmation -->
-      <section class="reg-step hidden" id="step-3" data-testid="reg-step-3">
-        <div class="confirm-card">
-          <div class="confirm-check">
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <h3 class="confirm-title">You're registered.</h3>
-          <p class="confirm-sub">We'll verify your payment and send your delegate kit shortly.</p>
-          <div class="confirm-id">
-            <span class="kicker kicker-gold">Your Registration ID</span>
-            <code id="confirm-id-value"></code>
-          </div>
-          <p class="confirm-help">
-            Questions? Write to
-            <a href="mailto:adhikar.hubli@gmail.com">adhikar.hubli@gmail.com</a>
-            or call <a href="tel:8073538399">8073538399</a>.
-          </p>
-          <button class="btn-primary" id="confirm-close" data-testid="reg-close">Back to site</button>
-        </div>
-      </section>
-    </div>
+    </main>
   </div>
 
-
-  <!-- Toast container -->
-  <div id="toast-container" class="toast-container"></div>
-
-  <!-- EmailJS SDK -->
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.js"></script>
+  <div id="toast" class="toast hidden"></div>
 
   <script src="script.js"></script>
 </body>
-
 </html>

