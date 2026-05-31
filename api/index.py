@@ -12,11 +12,7 @@ def index():
         'version': '1.0.0',
         'endpoints': {
             'GET /api/': 'This page',
-            'POST /api/solve': 'AI solver proxy (problem + provider → solution)',
+            'POST /api/solve': 'AI solver proxy (problem + provider -> solution)',
             'POST /api/classify': 'CTF challenge classification',
         }
     })
-
-@app.route('/api/')
-def api_root():
-    return index()
