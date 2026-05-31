@@ -507,6 +507,10 @@ body{
 .term-dollar{color:var(--gold)}
 .term-output{color:var(--text-secondary)}
 .term-error{color:var(--red)}
+.term-ai{color:var(--blue)}
+.term-muted{color:var(--text-muted)}
+.term-warn{color:var(--orange)}
+.term-info{color:var(--cyan)}
 .term-prompt{
   font-family:var(--font-mono);
   font-size:.78rem;

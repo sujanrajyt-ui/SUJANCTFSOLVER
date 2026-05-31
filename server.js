@@ -57,11 +57,31 @@ app.post('/api/kali/command', async (req, res) => {
   }
 });
 
+app.post('/api/local/exec', async (req, res) => {
+  try {
+    const { command } = req.body;
+    if (!command) return res.status(400).json({ error: 'command required' });
+    const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+    exec(command, { timeout: 300000, maxBuffer: 10 * 1024 * 1024, shell }, (err, stdout, stderr) => {
+      res.json({
+        stdout: stdout || '',
+        stderr: stderr || '',
+        return_code: err ? (err.code || -1) : 0,
+        success: !err
+      });
+    });
+  } catch (err) {
+    res.json({ error: err.message, success: false });
+  }
+});
+
+// Alias for backward compat
 app.post('/api/kali/exec', async (req, res) => {
   try {
     const { command } = req.body;
     if (!command) return res.status(400).json({ error: 'command required' });
-    exec(command, { timeout: 300000, maxBuffer: 10 * 1024 * 1024, shell: 'powershell.exe' }, (err, stdout, stderr) => {
+    const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+    exec(command, { timeout: 300000, maxBuffer: 10 * 1024 * 1024, shell }, (err, stdout, stderr) => {
       res.json({
         stdout: stdout || '',
         stderr: stderr || '',

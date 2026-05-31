@@ -1901,6 +1901,9 @@ function renderAiResponse(content){
 // Terminal
 // =============================================
 let termHistory=[],termHistIdx=-1;
+let termLastOutput='';
+let termMode='local'; // 'local' or 'kali'
+
 function terminalExecute(){
   const input=document.getElementById('terminal-input');
   const cmd=input.value.trim();
@@ -1909,20 +1912,88 @@ function terminalExecute(){
   input.value='';
   termHistory.push(cmd);
   termHistIdx=termHistory.length;
+
   if(cmd==='clear'){terminalClear();return}
   if(cmd==='help'){terminalHelp();return}
-  fetch('/api/kali/exec',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({command:cmd})
-  }).then(r=>r.json()).then(d=>{
-    if(d.stdout) appendTermLine(d.stdout,'term-output');
-    if(d.stderr) appendTermLine(d.stderr,'term-error');
-    if(!d.stdout&&!d.stderr) appendTermLine('[no output]','term-output');
-  }).catch(e=>{
-    appendTermLine(`Error: ${e.message}`,'term-error');
+  if(cmd.startsWith('!ai ')){terminalAI(cmd.slice(4));return}
+  if(cmd==='!explain'){terminalExplain();return}
+  if(cmd==='!mode'){toggleTermMode();return}
+
+  execCommand(cmd);
+}
+
+function execCommand(cmd){
+  const endpoints=termMode==='local'?['/api/local/exec','/api/kali/exec']:['/api/kali/exec','/api/local/exec'];
+  tryEndpoint(0);
+  function tryEndpoint(idx){
+    if(idx>=endpoints.length){
+      appendTermLine('[terminal] No execution endpoint available','term-error');
+      return;
+    }
+    fetch(endpoints[idx],{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({command:cmd})
+    }).then(r=>{
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    }).then(d=>{
+      termLastOutput=(d.stdout||'')+(d.stderr||'');
+      if(d.stdout) appendTermLine(d.stdout,'term-output');
+      if(d.stderr) appendTermLine(d.stderr,'term-error');
+      if(!d.stdout&&!d.stderr) appendTermLine('[empty output]','term-output');
+      appendTermLine(`[exit code: ${d.return_code??'?'}]`,'term-muted');
+    }).catch(e=>{
+      if(idx<endpoints.length-1) tryEndpoint(idx+1);
+      else appendTermLine(`Error: ${e.message}`,'term-error');
+    });
+  }
+}
+
+function terminalAI(prompt){
+  appendTermLine('[AI] Querying AI...','term-muted');
+  const provider=document.getElementById('ai-provider')?.value||'backend';
+  const key=localStorage.getItem('ai_api_key')||'';
+
+  let promise;
+  if(provider==='backend'){
+    const bm=document.getElementById('ai-backend-model')?.value||'openrouter';
+    promise=callBackendAI(prompt,bm);
+  }else if(provider==='openrouter'){
+    promise=callOpenRouter(key,prompt);
+  }else if(provider==='groq'){
+    promise=callGroq(key,prompt);
+  }else if(provider==='gemini'){
+    promise=callGemini(key,prompt);
+  }else if(provider==='openai'){
+    promise=callOpenAI(key,prompt);
+  }else{
+    appendTermLine('[AI] No provider configured. Select one in AI Solver tab.','term-error');
+    return;
+  }
+
+  promise.then(content=>{
+    const lines=content.split('\n');
+    lines.forEach(line=>appendTermLine(line,'term-ai'));
+  }).catch(err=>{
+    appendTermLine(`[AI] Error: ${err.message}`,'term-error');
   });
 }
+
+function terminalExplain(){
+  if(!termLastOutput){
+    appendTermLine('[explain] No previous command output to analyze. Run a command first.','term-warn');
+    return;
+  }
+  const prompt='Explain this command output in the context of a CTF challenge. What does it tell us and what should we do next?\n\n```\n'+termLastOutput.substring(0,4000)+'\n```';
+  terminalAI(prompt);
+}
+
+function toggleTermMode(){
+  termMode=termMode==='local'?'kali':'local';
+  appendTermLine(`[mode] Switched to ${termMode==='local'?'local laptop terminal':'Kali server backend'} mode`,'term-muted');
+}
+
 function appendTermLine(text,cls){
   const out=document.getElementById('terminal-output');
   const lines=text.split('\n');
@@ -1943,15 +2014,16 @@ function terminalKill(){
   terminalClear();
 }
 function terminalHelp(){
-  appendTermLine('Available commands:','term-output');
-  appendTermLine('  help     - Show this help','term-output');
-  appendTermLine('  clear    - Clear terminal','term-output');
-  appendTermLine('  whoami   - Current user','term-output');
-  appendTermLine('  ipconfig - Network config','term-output');
-  appendTermLine('  dir/ls   - List files','term-output');
-  appendTermLine('  ping     - Test connectivity','term-output');
-  appendTermLine('  nmap     - Scan ports (via Kali)','term-output');
-  appendTermLine('  Any system command is executed locally','term-output');
+  appendTermLine('SUJANSCTFSOLVER Terminal','term-output');
+  appendTermLine('─────────────────────────','term-muted');
+  appendTermLine('  <command>    Run any system command locally','term-output');
+  appendTermLine('  clear        Clear terminal','term-output');
+  appendTermLine('  help         Show this help','term-output');
+  appendTermLine('  !ai <msg>    Ask AI about CTF problem','term-ai');
+  appendTermLine('  !explain     Explain last command output with AI','term-muted');
+  appendTermLine('  !mode        Toggle local laptop / Kali server','term-muted');
+  appendTermLine('','term-output');
+  appendTermLine(`Current mode: ${termMode==='local'?'💻 Local laptop':'☁️ Kali server'}`,`term-${termMode==='local'?'muted':'warn'}`);
 }
 function terminalQuick(cmd){
   document.getElementById('terminal-input').value=cmd;
