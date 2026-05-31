@@ -1731,25 +1731,40 @@ async function callBackendAI(problem,provider='openrouter'){
 }
 
 async function callOpenRouter(key,problem){
-  const model=document.getElementById('ai-or-model')?.value||'deepseek/deepseek-r1:free';
-  const res=await apiFetch('https://openrouter.ai/api/v1/chat/completions',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'Authorization':`Bearer ${key}`,
-      'HTTP-Referer':'https://sujanctfsolver.vercel.app',
-      'X-Title':'SUJANSCTFSOLVER'
-    },
-    body:JSON.stringify({
-      model:model,
-      messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
-      max_tokens:8192,
-      temperature:0.1
-    })
-  },120000);
-  const data=await res.json();
-  if(data.error) throw new Error(data.error.message||data.error);
-  return data.choices?.[0]?.message?.content||null;
+  const selectedModel=document.getElementById('ai-or-model')?.value||'meta-llama/llama-3.3-70b-instruct:free';
+  const fallbackModels=['nousresearch/hermes-3-llama-3.1-405b:free','deepseek/deepseek-r1:free','qwen/qwen3-coder:free','liquid/lfm-2.5-1.2b-thinking:free'];
+  const modelsToTry=[selectedModel,...fallbackModels.filter(m=>m!==selectedModel)];
+  let lastErr='';
+  for(const model of modelsToTry){
+    try{
+      const res=await apiFetch('https://openrouter.ai/api/v1/chat/completions',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':`Bearer ${key}`,
+          'HTTP-Referer':'https://sujanctfsolver.vercel.app',
+          'X-Title':'SUJANSCTFSOLVER'
+        },
+        body:JSON.stringify({
+          model:model,
+          messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
+          max_tokens:8192,
+          temperature:0.1
+        })
+      },120000);
+      const data=await res.json();
+      if(data.error){
+        lastErr=data.error.message||data.error;
+        continue;
+      }
+      const content=data.choices?.[0]?.message?.content;
+      if(content) return content;
+    }catch(e){
+      lastErr=e.message;
+      continue;
+    }
+  }
+  throw new Error(lastErr||'All OpenRouter models failed');
 }
 
 async function callGroq(key,problem){
@@ -1903,7 +1918,7 @@ function renderAiResponse(content){
     }
     if(v==='openrouter'&&!localStorage.getItem('ai_or_model')){
       const orSel=document.getElementById('ai-or-model');
-      if(orSel) orSel.value='meta-llama/llama-3.3-70b-instruct:free';
+      if(orSel) orSel.value='nousresearch/hermes-3-llama-3.1-405b:free';
     }
   }
   if(sel) sel.addEventListener('change',toggleFields);
