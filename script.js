@@ -1980,7 +1980,12 @@ async function callBackendAI(problem,provider='openrouter'){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({problem,provider})
   });
-  const data=await res.json();
+  let data;
+  try{
+    data=await res.json();
+  }catch(e){
+    throw new Error('Backend AI returned HTML instead of JSON — the API may be down. Try the direct provider (OpenRouter/Gemini) with your own key instead.');
+  }
   if(!data.success) throw new Error(data.error||'Backend AI failed');
   return data.content;
 }
@@ -2240,7 +2245,10 @@ function execCommand(cmd){
       body:JSON.stringify({command:cmd})
     }).then(r=>{
       if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
+      return r.text().then(t=>{
+        try{return JSON.parse(t)}
+        catch(e){throw new Error('Server returned HTML (expected JSON) — are you sure the server is running? Run: node server.js')}
+      });
     }).then(d=>{
       termLastOutput=(d.stdout||'')+(d.stderr||'');
       if(d.stdout) appendTermLine(d.stdout,'term-output');
