@@ -51,6 +51,7 @@ const PROVIDERS = {
   openrouter: {
     baseUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
+    fallbackModels: ['nousresearch/hermes-3-llama-3.1-405b:free', 'deepseek/deepseek-v4-flash:free', 'qwen/qwen3-coder:free', 'liquid/lfm-2.5-1.2b-thinking:free'],
     envKey: 'OPENROUTER_API_KEY',
     headers: (key) => ({
       'Content-Type': 'application/json',
@@ -119,19 +120,33 @@ module.exports = async (req, res) => {
   const apiKey = process.env[config.envKey];
   if (!apiKey) return sendJSON(res, 501, { success: false, error: `${config.envKey} not configured on server` });
 
-  const model = modelOverride || config.defaultModel;
-
-  try {
-    let result;
-    if (providerName === 'gemini') {
-      result = await callGemini(apiKey, config, model, problem);
-    } else {
-      result = await callChat(apiKey, config, model, problem, providerName);
-    }
-    sendJSON(res, result.success ? 200 : 500, result);
-  } catch (e) {
-    sendJSON(res, 500, { success: false, error: e.message });
+  const modelsToTry = [];
+  if (modelOverride) {
+    modelsToTry.push(modelOverride);
+  } else {
+    modelsToTry.push(config.defaultModel);
+    if (config.fallbackModels) modelsToTry.push(...config.fallbackModels);
   }
+
+  let lastError = null;
+  for (const model of modelsToTry) {
+    try {
+      let result;
+      if (providerName === 'gemini') {
+        result = await callGemini(apiKey, config, model, problem);
+      } else {
+        result = await callChat(apiKey, config, model, problem, providerName);
+      }
+      if (result.success) {
+        return sendJSON(res, 200, result);
+      }
+      lastError = result.error;
+    } catch (e) {
+      lastError = e.message;
+    }
+  }
+
+  sendJSON(res, 500, { success: false, error: lastError || 'All models failed' });
 };
 
 function callChat(apiKey, config, model, problem, providerName) {
@@ -163,12 +178,12 @@ function callChat(apiKey, config, model, problem, providerName) {
           const parsed = JSON.parse(data);
           if (resp.statusCode !== 200) {
             const err = parsed.error || {};
-            return resolve({ success: false, error: err.message || JSON.stringify(parsed) });
+            return resolve({ success: false, error: `[${resp.statusCode}] ${err.message || err.code || JSON.stringify(parsed).substring(0,200)}` });
           }
           const content = (parsed.choices || [{}])[0]?.message?.content || '';
           resolve({ success: true, content, provider: providerName, model });
         } catch (e) {
-          resolve({ success: false, error: `Parse error: ${e.message}` });
+          resolve({ success: false, error: `Parse error: ${e.message}. Raw: ${data.substring(0,100)}` });
         }
       });
     });
@@ -180,7 +195,7 @@ function callChat(apiKey, config, model, problem, providerName) {
   });
 }
 
-function callGemini(apiKey, config, model, problem) {
+function callGemini(apiKey, config, model, problem, providerName) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       contents: [{
