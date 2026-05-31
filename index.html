@@ -108,7 +108,7 @@
               <div class="cat-icon">🤖</div>
               <h3>Auto Solver</h3>
               <p>AI problem analysis &amp; auto-decoding</p>
-              <span class="cat-tools">14 analysers</span>
+              <span class="cat-tools">15 analysers</span>
             </div>
             <div class="category-card" data-view="crypto" style="--accent:#00ff88">
               <div class="cat-icon">🔐</div>
@@ -889,8 +889,10 @@ The solver will detect the type and try to decode/solve it."></textarea>
                   <div class="field">
                     <label>AI Provider</label>
                     <select id="ai-provider">
+                      <option value="openrouter" selected>OpenRouter (free models, no key needed)</option>
+                      <option value="groq">Groq (free, super fast)</option>
+                      <option value="gemini">Google Gemini (free tier, needs free key)</option>
                       <option value="openai">OpenAI (requires API key)</option>
-                      <option value="gemini" selected>Google Gemini (free tier, needs free key)</option>
                       <option value="custom">Custom API</option>
                     </select>
                   </div>
@@ -902,6 +904,19 @@ The solver will detect the type and try to decode/solve it."></textarea>
                       <button class="btn btn-sm btn-clear" onclick="clearAiConfig()">Clear</button>
                     </div>
                   </div>
+                  <div class="field" id="ai-or-model-field" style="display:none">
+                    <label>OpenRouter Model</label>
+                    <select id="ai-or-model">
+                      <option value="deepseek/deepseek-r1:free" selected>DeepSeek R1 (free, strongest)</option>
+                      <option value="google/gemini-2.0-flash-thinking-exp:free">Gemini 2.0 Flash Thinking (free)</option>
+                      <option value="mistralai/mistral-small-3.1-24b-instruct:free">Mistral Small 3.1 (free)</option>
+                      <option value="qwen/qwq-32b:free">QwQ 32B (free, strong reasoning)</option>
+                      <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (paid)</option>
+                      <option value="openai/gpt-4o">GPT-4o (paid)</option>
+                      <option value="deepseek/deepseek-r1">DeepSeek R1 (paid, unlimited)</option>
+                      <option value="deepseek/deepseek-chat">DeepSeek V3 (cheap, fast)</option>
+                    </select>
+                  </div>
                   <div class="field" id="ai-custom-url-field" style="display:none">
                     <label>Custom API URL <span class="text-muted">(OpenAI-compatible)</span></label>
                     <input type="text" id="ai-custom-url" placeholder="https://your-api.com/v1/chat/completions" />
@@ -911,9 +926,13 @@ The solver will detect the type and try to decode/solve it."></textarea>
                     <input type="text" id="ai-custom-model" placeholder="e.g. llama3, deepseek-coder, mistral" />
                   </div>
                   <div class="ai-provider-info" id="ai-provider-info">
-                    💡 <strong>Gemini is free!</strong> Get a key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — no credit card needed, 60 req/min free.
+                    💡 <strong>OpenRouter</strong> (default) — free signup at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>, get a free key, access 200+ models including GPT-4o, Claude 3.5, DeepSeek R1, Gemini Pro.
                     <br><br>
-                    ⚡ <strong>vs Shannon AI:</strong> Shannon AI is a commercial fine-tuned CTF model (96% DarkEval). This solver uses general-purpose AI (Gemini/GPT-4o-mini) with a CTF-optimized prompt — powerful but not as specialized. For hardest challenges, use the Smart Analyzer + AI together.
+                    ⚡ <strong>Groq</strong> — completely free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>, fastest inference, great for code.
+                    <br><br>
+                    ⚡ <strong>Gemini</strong> — free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>, 60 req/min.
+                    <br><br>
+                    🏆 <strong>Best setup:</strong> OpenRouter (DeepSeek R1 or Claude 3.5 Sonnet) → closest to Shannon AI levels.
                   </div>
                 </div>
                 <div class="autosolver-input-area">

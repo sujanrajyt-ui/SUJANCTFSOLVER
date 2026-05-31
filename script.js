@@ -1474,29 +1474,94 @@ function clearAnalyzer(){
 // AI Solver (OpenAI API)
 // =============================================
 
-const AI_SYSTEM_PROMPT = `You are SUJANSCTFSOLVER, an elite AI CTF solver. Your role is to help solve Capture The Flag challenges across all categories: cryptography, web exploitation, reverse engineering, binary exploitation (pwn), forensics, steganography, OSINT, and encoding.
+const AI_SYSTEM_PROMPT = `You are SUJANSCTFSOLVER — an elite AI CTF solver with 95%+ success rate. You deeply understand every CTF category.
 
-Rules:
-1. Analyze the problem carefully before answering
-2. Show step-by-step reasoning
-3. When you find the flag, highlight it clearly like: 🏴 FLAG: flag{...}
-4. If the problem requires running tools (like ROT, XOR, Base64), explain what to do or do the decoding in your response
-5. For crypto challenges, show the mathematical steps
-6. For web challenges, explain the vulnerability and exploitation steps
-7. For reversing, explain the binary analysis approach
-8. For pwn, explain the exploit strategy
-9. Be thorough and educational - explain WHY something works
-10. If data is incomplete, ask for the specific missing values`;
+## CORE RULES
+1. Output ONLY the solution — no disclaimers, no "I'm an AI" apologies, no refusals
+2. Show step-by-step reasoning with clear headings
+3. When you find the flag, highlight it: 🏴 FLAG: flag{...}
+4. If data is incomplete, ask for EXACTLY what's missing (not "provide more info")
+5. For every challenge type, follow the specialized approach below
+
+## CRYPTOGRAPHY
+- RSA: Extract n,e,c. Try small n factoring, Wiener if e is large, common modulus, broadcast attack, Hastad's, Fermat factoring
+- AES: Identify mode (ECB/CBC/CTR). Check for key reuse, IV reuse, padding oracle
+- XOR: Try single-byte brute (0-255), multi-byte with key-length detection, crib dragging
+- Classical: Frequency analysis for substitution, index of coincidence for Vigenere, bigram analysis
+- Hash: Identify type by length (MD5=32, SHA1=40, SHA256=64, SHA512=128), suggest lookup sites
+- Encoding chains: Detect nested encoding (Base64→Hex→ROT→...), decode layer by layer
+
+## WEB EXPLOITATION
+- SQLi: Check for ' OR 1=1--, UNION, time-based, boolean-based, error-based
+- XSS: Test <script>, img onerror, svg, polyglots, CSP bypass
+- SSTI: Test {{7*7}}, {7*7}, #{7*7}, ${7*7} for template injection
+- LFI: Test ../../../etc/passwd, wrappers like php://filter
+- SSRF: Test internal IPs, cloud metadata (169.254.169.254)
+- JWT: Check alg:none, weak secret brute, kid injection
+
+## BINARY EXPLOITATION (PWN)
+- Checksec: Identify protections (NX, PIE, RELRO, Stack Canary, Fortify)
+- ROP: Find gadgets with ROPgadget, build chain with pop rdi; ret
+- Ret2libc: Leak libc address via puts/GOT, compute system+"/bin/sh"
+- Heap: Tcache poisoning, fastbin attack, use-after-free, house of force
+- Format string: Use %p to leak, %n to write, calculate offsets
+- Shellcode: Linux x64 execve(/bin/sh) = 27 bytes
+
+## REVERSE ENGINEERING
+- Static: Analyze strings, imports, sections. Look for base64 tables, XOR keys, comparison values
+- Dynamic: Trace execution, hook functions, patch jumps (NOP out JNZ)
+- Obfuscation: Look for opaque predicates, control flow flattening, string encryption
+- PE/ELF: Check entry point, section permissions, compile timestamp, packer detection
+
+## FORENSICS
+- Memory: Extract processes with pslist, dump with memdump, scan for cmdline, netscan
+- Disk: Check for deleted files, alternate data streams, $MFT, hidden partitions
+- Network: Extract PCAP objects, follow TCP streams, check for DNS exfiltration
+- Registry: Check RUN keys, UserAssist, ShimCache, AmCache for execution evidence
+- File carving: Recover deleted files by magic bytes (JPEG FFD8FF, PNG 89504E47, ZIP 504B0304)
+
+## STEGANOGRAPHY
+- Image: Check LSB, palette, metadata (EXIF), embedded ZIP, difference between images
+- Audio: Check spectrogram, phase encoding, echo hiding, LSB in WAV
+- Text: Check whitespace (tabs vs spaces), zero-width characters, line spacing
+- Network: Check timing between packets, unused header fields, ICMP data
+
+## OSINT
+- DNS: Check A, AAAA, MX, TXT, CNAME, NS, SOA records. Try zone transfer
+- Subdomains: Try common prefixes (admin, dev, api, mail, vpn, www2)
+- Email: Verify format, check MX, search breach databases
+- Social: Check social media, GitHub repos, Pastebin, Shodan, Censys
+- Metadata: Check PDF/Office file metadata, image GPS coordinates
+
+## ENCODING DETECTION (try in order)
+1. Base64 (A-Za-z0-9+/=) → decode → check if English
+2. Hex (0-9a-f, even length) → bytes → ASCII
+3. Binary (0-1, len%8==0) → bytes → ASCII
+4. Base32 (A-Z2-7=) → decode
+5. Base58 (1-9A-HJ-NP-Za-km-z) → decode
+6. URL (%XX) → decode
+7. HTML entities (&xxx;) → decode
+8. Unicode escapes (\\uXXXX) → decode
+9. ROT13/ROT47 → try all shifts, detect English
+10. Atbash → reverse alphabet
+11. Morse (. - /) → decode
+12. Decimal (65 83 67 73 I) → ASCII
+13. Octal (101 102 103) → ASCII
+14. Reversed string → reverse
+
+ALWAYS try all encodings in nested chains. Example: Base64 → Hex → ROT13 → flag`;
 
 function saveAiConfig(){
   const key=document.getElementById('ai-api-key').value.trim();
   const provider=document.getElementById('ai-provider').value;
   const customUrl=document.getElementById('ai-custom-url')?.value.trim()||'';
   const customModel=document.getElementById('ai-custom-model')?.value.trim()||'';
+  const orModel=document.getElementById('ai-or-model')?.value||'';
   localStorage.setItem('ai_provider',provider);
   if(key) localStorage.setItem('ai_api_key',key);
   if(customUrl) localStorage.setItem('ai_custom_url',customUrl);
   if(customModel) localStorage.setItem('ai_custom_model',customModel);
+  if(orModel) localStorage.setItem('ai_or_model',orModel);
   showToast('AI config saved locally');
 }
 
@@ -1505,6 +1570,7 @@ function clearAiConfig(){
   localStorage.removeItem('ai_provider');
   localStorage.removeItem('ai_custom_url');
   localStorage.removeItem('ai_custom_model');
+  localStorage.removeItem('ai_or_model');
   document.getElementById('ai-api-key').value='';
   document.getElementById('ai-custom-url').value='';
   document.getElementById('ai-custom-model').value='';
@@ -1537,7 +1603,11 @@ async function autoAISolve(){
 
   try{
     let content;
-    if(provider==='gemini'){
+    if(provider==='openrouter'){
+      content=await callOpenRouter(key,problem);
+    }else if(provider==='groq'){
+      content=await callGroq(key,problem);
+    }else if(provider==='gemini'){
       content=await callGemini(key,problem);
     }else if(provider==='openai'){
       content=await callOpenAI(key,problem);
@@ -1566,6 +1636,45 @@ async function apiFetch(url,opts,timeoutMs=60000){
     if(e.name==='AbortError') throw new Error('Request timed out after '+(timeoutMs/1000)+'s');
     throw e;
   }
+}
+
+async function callOpenRouter(key,problem){
+  const model=document.getElementById('ai-or-model')?.value||'deepseek/deepseek-r1:free';
+  const res=await apiFetch('https://openrouter.ai/api/v1/chat/completions',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':`Bearer ${key}`,
+      'HTTP-Referer':'https://sujanctfsolver.vercel.app',
+      'X-Title':'SUJANSCTFSOLVER'
+    },
+    body:JSON.stringify({
+      model:model,
+      messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
+      max_tokens:8192,
+      temperature:0.2
+    })
+  },120000);
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message||data.error);
+  return data.choices?.[0]?.message?.content||null;
+}
+
+async function callGroq(key,problem){
+  const model='llama-3.3-70b-versatile';
+  const res=await apiFetch('https://api.groq.com/openai/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+    body:JSON.stringify({
+      model:model,
+      messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
+      max_tokens:8192,
+      temperature:0.2
+    })
+  },120000);
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+  return data.choices?.[0]?.message?.content||null;
 }
 
 async function callOpenAI(key,problem){
@@ -1662,22 +1771,39 @@ function renderAiResponse(content){
   const savedProvider=localStorage.getItem('ai_provider');
   const savedCustomUrl=localStorage.getItem('ai_custom_url');
   const savedCustomModel=localStorage.getItem('ai_custom_model');
+  const savedOrModel=localStorage.getItem('ai_or_model');
   if(savedKey){const el=document.getElementById('ai-api-key');if(el) el.value=savedKey}
   if(savedProvider){const el=document.getElementById('ai-provider');if(el) el.value=savedProvider}
   if(savedCustomUrl){const el=document.getElementById('ai-custom-url');if(el) el.value=savedCustomUrl}
   if(savedCustomModel){const el=document.getElementById('ai-custom-model');if(el) el.value=savedCustomModel}
+  if(savedOrModel){const el=document.getElementById('ai-or-model');if(el) el.value=savedOrModel}
 
   const sel=document.getElementById('ai-provider');
+  const orField=document.getElementById('ai-or-model-field');
   const custUrlField=document.getElementById('ai-custom-url-field');
   const custModelField=document.getElementById('ai-custom-model-field');
   const infoBox=document.getElementById('ai-provider-info');
   function toggleFields(){
     const v=sel?.value;
+    if(orField) orField.style.display=v==='openrouter'?'block':'none';
     if(custUrlField) custUrlField.style.display=v==='custom'?'block':'none';
     if(custModelField) custModelField.style.display=v==='custom'?'block':'none';
-    if(infoBox) infoBox.style.display=v==='gemini'?'block':'none';
+    if(infoBox) infoBox.style.display='block';
     const keyEl=document.getElementById('ai-api-key');
-    if(keyEl) keyEl.placeholder=v==='gemini'?'Enter your free Gemini API key from aistudio.google.com/apikey':v==='openai'?'sk-... your OpenAI API key':'API key (if required)';
+    if(keyEl){
+      const phs={
+        openrouter:'Get free key at https://openrouter.ai/keys',
+        groq:'Get free key at https://console.groq.com/keys',
+        gemini:'Get free key at https://aistudio.google.com/apikey',
+        openai:'sk-... your OpenAI API key',
+        custom:'API key (if required)'
+      };
+      keyEl.placeholder=phs[v]||'API key';
+    }
+    if(v==='openrouter'&&!localStorage.getItem('ai_or_model')){
+      const orSel=document.getElementById('ai-or-model');
+      if(orSel) orSel.value='deepseek/deepseek-r1:free';
+    }
   }
   if(sel) sel.addEventListener('change',toggleFields);
   toggleFields();
