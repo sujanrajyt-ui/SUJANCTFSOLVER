@@ -1612,7 +1612,7 @@ function handleFiles(files){
       const reader=new FileReader();
       reader.onload=()=>{
         const ta=document.getElementById('ai-input');
-        const sep=ta.value?'\n\n--- ${file.name} ---\n\n':'';
+        const sep=ta.value?'\n\n--- '+file.name+' ---\n\n':'';
         ta.value+=sep+reader.result;
         ta.dispatchEvent(new Event('input'));
       };
@@ -1625,7 +1625,7 @@ function handleFiles(files){
         let hex='';const max=Math.min(bytes.length,512);
         for(let i=0;i<max;i++) hex+=bytes[i].toString(16).padStart(2,'0')+(i%16===15?'\n':' ');
         const ta=document.getElementById('ai-input');
-        const sep=ta.value?'\n\n--- ${file.name} (hex preview, ${bytes.length} bytes) ---\n\n':'';
+        const sep=ta.value?'\n\n--- '+file.name+' (hex preview, '+bytes.length+' bytes) ---\n\n':'';
         ta.value+=sep+hex;
       };
       reader.readAsArrayBuffer(file);
@@ -1634,7 +1634,7 @@ function handleFiles(files){
       const reader=new FileReader();
       reader.onload=()=>{
         const ta=document.getElementById('ai-input');
-        const sep=ta.value?'\n\n--- ${file.name} ---\n\n':'';
+        const sep=ta.value?'\n\n--- '+file.name+' ---\n\n':'';
         ta.value+=sep+reader.result.substring(0,10000);
       };
       reader.readAsText(file);
