@@ -1550,8 +1550,26 @@ async function autoAISolve(){
   }
 }
 
+async function apiFetch(url,opts,timeoutMs=60000){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const res=await fetch(url,{...opts,signal:ctrl.signal});
+    clearTimeout(timer);
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      throw new Error(err.error?.message||err.error?.details||`HTTP ${res.status}`);
+    }
+    return res;
+  }catch(e){
+    clearTimeout(timer);
+    if(e.name==='AbortError') throw new Error('Request timed out after '+(timeoutMs/1000)+'s');
+    throw e;
+  }
+}
+
 async function callOpenAI(key,problem){
-  const res=await fetch('https://api.openai.com/v1/chat/completions',{
+  const res=await apiFetch('https://api.openai.com/v1/chat/completions',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
     body:JSON.stringify({
@@ -1561,36 +1579,48 @@ async function callOpenAI(key,problem){
       temperature:0.3
     })
   });
-  if(!res.ok){
-    const err=await res.json().catch(()=>({}));
-    throw new Error(err.error?.message||`HTTP ${res.status}`);
-  }
   const data=await res.json();
   return data.choices?.[0]?.message?.content;
 }
 
 async function callGemini(key,problem){
   const model='gemini-2.0-flash';
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-  const res=await fetch(url,{
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const res=await apiFetch(url,{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json','x-goog-api-key':key},
     body:JSON.stringify({
       contents:[{
         parts:[{text:`${AI_SYSTEM_PROMPT}\n\n--- CTF PROBLEM ---\n\n${problem}\n\n--- RESPONSE ---\nProvide step-by-step solution. If you find a flag, output it as 🏴 FLAG: flag{...}`}]
       }],
+      safetySettings:[
+        {category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},
+        {category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},
+        {category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},
+        {category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}
+      ],
       generationConfig:{
         maxOutputTokens:8192,
         temperature:0.3
       }
     })
-  });
-  if(!res.ok){
-    const err=await res.json().catch(()=>({}));
-    throw new Error(err.error?.message||`HTTP ${res.status}`);
+  },90000);
+  const data=await res.json().catch(()=>({error:{message:'Failed to parse response - possible network/CORS error'}}));
+  if(!res.ok||data.error){
+    const msg=data.error?.message||data.error?.details||`HTTP ${res.status}`;
+    throw new Error(msg);
   }
-  const data=await res.json();
-  return data.candidates?.[0]?.content?.parts?.map(p=>p.text).join('\n')||null;
+  if(!data.candidates||data.candidates.length===0){
+    if(data.promptFeedback?.blockReason) throw new Error(`Prompt blocked: ${data.promptFeedback.blockReason}`);
+    throw new Error('Empty response from Gemini (no candidates returned)');
+  }
+  const candidate=data.candidates[0];
+  if(candidate.finishReason&&candidate.finishReason!=='STOP'&&candidate.finishReason!=='MAX_TOKENS'){
+    throw new Error(`Response ${candidate.finishReason}: ${candidate.finishMessage||'content filtered'}`);
+  }
+  const text=candidate.content?.parts?.map(p=>p.text).join('\n');
+  if(!text) throw new Error('Empty response - content may have been blocked');
+  return text;
 }
 
 async function callCustom(key,problem){
@@ -1602,7 +1632,7 @@ async function callCustom(key,problem){
   const headers={'Content-Type':'application/json'};
   if(key) headers['Authorization']=`Bearer ${key}`;
 
-  const res=await fetch(customUrl,{
+  const res=await apiFetch(customUrl,{
     method:'POST',
     headers:headers,
     body:JSON.stringify({
@@ -1612,10 +1642,6 @@ async function callCustom(key,problem){
       temperature:0.3
     })
   });
-  if(!res.ok){
-    const err=await res.json().catch(()=>({}));
-    throw new Error(err.error?.message||`HTTP ${res.status}`);
-  }
   const data=await res.json();
   return data.choices?.[0]?.message?.content||data.response||null;
 }
