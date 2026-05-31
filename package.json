@@ -2,9 +2,7 @@
   "name": "sujansctfsolver",
   "version": "1.0.0",
   "description": "SUJANSCTFSOLVER - AI-Powered CTF Solving Web Platform",
-  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
     "dev": "node server.js"
   },
   "dependencies": {
