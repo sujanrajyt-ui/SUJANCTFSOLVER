@@ -84,40 +84,61 @@ const PROVIDERS = {
   }
 };
 
+function parseBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try { resolve(JSON.parse(body)); }
+      catch { resolve({}); }
+    });
+  });
+}
+
+function sendJSON(res, status, data) {
+  const json = JSON.stringify(data);
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(json) });
+  res.end(json);
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
-    return res.json({
+    return sendJSON(res, 200, {
       endpoint: '/api/solve',
       method: 'POST',
       body: { problem: 'CTF challenge text', provider: 'openrouter|groq|gemini|openai', model: 'optional' }
     });
   }
 
-  const { problem, provider: providerName = 'openrouter', model: modelOverride } = req.body || {};
-  if (!problem) return res.status(400).json({ success: false, error: 'problem is required' });
+  const data = await parseBody(req);
+  const problem = (data.problem || '').trim();
+  const providerName = (data.provider || 'openrouter').trim().toLowerCase();
+  const modelOverride = (data.model || '').trim();
+
+  if (!problem) return sendJSON(res, 400, { success: false, error: 'problem is required' });
 
   const config = PROVIDERS[providerName];
-  if (!config) return res.status(400).json({ success: false, error: `unknown provider: ${providerName}` });
+  if (!config) return sendJSON(res, 400, { success: false, error: `unknown provider: ${providerName}` });
 
   const apiKey = process.env[config.envKey];
-  if (!apiKey) return res.status(501).json({ success: false, error: `${config.envKey} not configured on server` });
+  if (!apiKey) return sendJSON(res, 501, { success: false, error: `${config.envKey} not configured on server` });
 
   const model = modelOverride || config.defaultModel;
 
   try {
     let result;
     if (providerName === 'gemini') {
-      result = await callGemini(apiKey, config, model, problem);
+      result = await callGemini(apiKey, config, model, problem, providerName);
     } else {
-      result = await callChat(apiKey, config, model, problem);
+      result = await callChat(apiKey, config, model, problem, providerName);
     }
-    res.json(result);
+    sendJSON(res, result.success ? 200 : 500, result);
   } catch (e) {
-    res.json({ success: false, error: e.message });
+    sendJSON(res, 500, { success: false, error: e.message });
   }
 };
 
-function callChat(apiKey, config, model, problem) {
+function callChat(apiKey, config, model, problem, providerName) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model,
@@ -138,7 +159,7 @@ function callChat(apiKey, config, model, problem) {
       timeout: 120000
     };
 
-    const req = https.request(options, (resp) => {
+    const r = https.request(options, (resp) => {
       let data = '';
       resp.on('data', chunk => data += chunk);
       resp.on('end', () => {
@@ -156,14 +177,14 @@ function callChat(apiKey, config, model, problem) {
       });
     });
 
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout after 120s')); });
-    req.write(body);
-    req.end();
+    r.on('error', reject);
+    r.on('timeout', () => { r.destroy(); reject(new Error('Request timeout after 120s')); });
+    r.write(body);
+    r.end();
   });
 }
 
-function callGemini(apiKey, config, model, problem) {
+function callGemini(apiKey, config, model, problem, providerName) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       contents: [{
@@ -187,7 +208,7 @@ function callGemini(apiKey, config, model, problem) {
       timeout: 90000
     };
 
-    const req = https.request(options, (resp) => {
+    const r = https.request(options, (resp) => {
       let data = '';
       resp.on('data', chunk => data += chunk);
       resp.on('end', () => {
@@ -210,9 +231,9 @@ function callGemini(apiKey, config, model, problem) {
       });
     });
 
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Gemini timeout after 90s')); });
-    req.write(body);
-    req.end();
+    r.on('error', reject);
+    r.on('timeout', () => { r.destroy(); reject(new Error('Gemini timeout after 90s')); });
+    r.write(body);
+    r.end();
   });
 }
