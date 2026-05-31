@@ -1693,7 +1693,11 @@ async function autoAISolve(){
     }
     renderAiResponse(content||'No response from AI');
   }catch(err){
-    responseEl.innerHTML=`<div class="ai-error">❌ Error: ${escapeHtml(err.message)}</div>`;
+    const isBackend=provider==='backend';
+    const hint=isBackend
+      ?'<div style="margin-top:8px;font-size:.8rem;color:var(--text-muted)">💡 <strong>Backend AI failed</strong> — server API keys may not be configured. <a href="#" onclick="document.getElementById(\'ai-provider\').value=\'openrouter\';document.getElementById(\'ai-provider\').dispatchEvent(new Event(\'change\'));showToast(\'Switched to OpenRouter — enter your own key\',\'warn\');return false" style="color:var(--blue)">Switch to OpenRouter</a> with your own key instead.</div>'
+      :'';
+    responseEl.innerHTML=`<div class="ai-error">❌ Error: ${escapeHtml(err.message)}${hint}</div>`;
   }
 }
 
@@ -1740,7 +1744,7 @@ async function callOpenRouter(key,problem){
       model:model,
       messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
       max_tokens:8192,
-      temperature:0.2
+      temperature:0.1
     })
   },120000);
   const data=await res.json();
@@ -1757,7 +1761,7 @@ async function callGroq(key,problem){
       model:model,
       messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
       max_tokens:8192,
-      temperature:0.2
+      temperature:0.1
     })
   },120000);
   const data=await res.json();
@@ -1772,10 +1776,10 @@ async function callOpenAI(key,problem){
     body:JSON.stringify({
       model:'gpt-4o-mini',
       messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
-      max_tokens:4096,
-      temperature:0.3
+      max_tokens:8192,
+      temperature:0.1
     })
-  });
+  },120000);
   const data=await res.json();
   return data.choices?.[0]?.message?.content;
 }
@@ -1798,7 +1802,7 @@ async function callGemini(key,problem){
       ],
       generationConfig:{
         maxOutputTokens:8192,
-        temperature:0.3
+        temperature:0.1
       }
     })
   },90000);
@@ -1835,10 +1839,10 @@ async function callCustom(key,problem){
     body:JSON.stringify({
       model:customModel,
       messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
-      max_tokens:4096,
-      temperature:0.3
+      max_tokens:8192,
+      temperature:0.1
     })
-  });
+  },120000);
   const data=await res.json();
   return data.choices?.[0]?.message?.content||data.response||null;
 }

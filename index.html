@@ -890,8 +890,8 @@ The solver will detect the type and try to decode/solve it."></textarea>
                 <div class="field">
                   <label>AI Provider</label>
                   <select id="ai-provider">
-                        <option value="backend" selected>🚀 Backend AI (server keys, no key needed)</option>
-                        <option value="openrouter">OpenRouter (free models, needs own key)</option>
+                        <option value="openrouter" selected>🔄 OpenRouter (free models, needs own key)</option>
+                        <option value="backend">🚀 Backend AI (server keys, no key needed)</option>
                         <option value="groq">Groq (free, super fast)</option>
                         <option value="gemini">Google Gemini (free tier, needs free key)</option>
                         <option value="openai">OpenAI (requires API key)</option>
@@ -915,6 +915,14 @@ The solver will detect the type and try to decode/solve it."></textarea>
                       <option value="openai">🤖 OpenAI GPT-4o-mini</option>
                     </select>
                     <span class="text-muted">Uses server-configured API keys — no key needed from you</span>
+                    <details class="backend-config-help" style="margin-top:6px;font-size:.72rem;color:var(--text-muted)">
+                      <summary style="cursor:pointer">📋 Backend setup guide</summary>
+                      <div style="margin-top:4px;padding:6px;background:var(--bg-tertiary);border-radius:4px">
+                        <div>Set these in <strong>Vercel → Settings → Environment Variables</strong>:</div>
+                        <code style="display:block;margin:4px 0">OPENROUTER_API_KEY=sk-or-v1-...<br>GROQ_API_KEY=gsk_...<br>GEMINI_API_KEY=AIza...<br>OPENAI_API_KEY=sk-...</code>
+                        <div>Once added, Backend AI works automatically without user API keys.</div>
+                      </div>
+                    </details>
                   </div>
                   <div class="field" id="ai-or-model-field" style="display:none">
                     <label>OpenRouter Model</label>

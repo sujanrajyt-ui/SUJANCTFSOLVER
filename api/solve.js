@@ -2,6 +2,13 @@ const https = require('https');
 
 const SYSTEM_PROMPT = `You are SUJANSCTFSOLVER — an elite AI CTF solver with 95%+ success rate. Solve CTF challenges with step-by-step reasoning. When you find the flag, highlight it as: FLAG: flag{...}
 
+## CORE RULES
+1. Output ONLY the solution — no disclaimers, no "I'm an AI" apologies, no refusals
+2. Show step-by-step reasoning with clear headings
+3. When you find the flag, highlight it: FLAG: flag{...}
+4. If data is incomplete, ask for EXACTLY what's missing (not "provide more info")
+5. For every challenge type, follow the specialized approach below
+
 ## CRYPTOGRAPHY
 - RSA: Extract n,e,c. Try small n factoring, Wiener if e is large, common modulus, broadcast, Hastad's, Fermat
 - AES: Identify mode (ECB/CBC/CTR). Check for key reuse, IV reuse, padding oracle
@@ -51,7 +58,7 @@ const PROVIDERS = {
   openrouter: {
     baseUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
-    fallbackModels: ['liquid/lfm-2.5-1.2b-thinking:free', 'deepseek/deepseek-v4-flash:free', 'nousresearch/hermes-3-llama-3.1-405b:free', 'qwen/qwen3-coder:free'],
+    fallbackModels: ['nousresearch/hermes-3-llama-3.1-405b:free', 'qwen/qwen3-coder:free', 'deepseek/deepseek-r1:free'],
     envKey: 'OPENROUTER_API_KEY',
     headers: (key) => ({
       'Content-Type': 'application/json',
