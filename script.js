@@ -1442,6 +1442,121 @@ function autoSolve(){
   results.scrollTop=0;
 }
 
+function clearAnalyzer(){
+  document.getElementById('auto-input').value='';
+  const el=document.getElementById('auto-results');
+  el.innerHTML=`<div class="auto-placeholder"><div class="auto-placeholder-icon">⚡</div><div>Paste a CTF problem above and click Smart Analyze</div></div>`;
+}
+
+// =============================================
+// AI Solver (OpenAI API)
+// =============================================
+
+const AI_SYSTEM_PROMPT = `You are SUJANSCTFSOLVER, an elite AI CTF solver. Your role is to help solve Capture The Flag challenges across all categories: cryptography, web exploitation, reverse engineering, binary exploitation (pwn), forensics, steganography, OSINT, and encoding.
+
+Rules:
+1. Analyze the problem carefully before answering
+2. Show step-by-step reasoning
+3. When you find the flag, highlight it clearly like: 🏴 FLAG: flag{...}
+4. If the problem requires running tools (like ROT, XOR, Base64), explain what to do or do the decoding in your response
+5. For crypto challenges, show the mathematical steps
+6. For web challenges, explain the vulnerability and exploitation steps
+7. For reversing, explain the binary analysis approach
+8. For pwn, explain the exploit strategy
+9. Be thorough and educational - explain WHY something works
+10. If data is incomplete, ask for the specific missing values`;
+
+function saveAiKey(){
+  const key=document.getElementById('ai-api-key').value.trim();
+  if(!key){showToast('Enter an API key','warn');return}
+  localStorage.setItem('openai_api_key',key);
+  showToast('API key saved locally');
+}
+
+function clearAiKey(){
+  localStorage.removeItem('openai_api_key');
+  document.getElementById('ai-api-key').value='';
+  showToast('API key cleared','warn');
+}
+
+function clearAiChat(){
+  const el=document.getElementById('ai-response');
+  el.innerHTML=`<div class="auto-placeholder"><div class="auto-placeholder-icon">🤖</div><div>Enter your OpenAI API key above, paste a problem, and click Send to AI</div></div>`;
+  document.getElementById('ai-input').value='';
+}
+
+function autoAISolve(){
+  const key=localStorage.getItem('openai_api_key')||document.getElementById('ai-api-key').value.trim();
+  if(!key){showToast('Enter your OpenAI API key first','warn');return}
+
+  const problem=document.getElementById('ai-input').value.trim();
+  if(!problem){showToast('Enter a CTF problem','warn');return}
+
+  // Save key if entered
+  if(document.getElementById('ai-api-key').value.trim()){
+    localStorage.setItem('openai_api_key',document.getElementById('ai-api-key').value.trim());
+  }
+
+  const model=document.getElementById('ai-model').value;
+  const responseEl=document.getElementById('ai-response');
+
+  responseEl.innerHTML=`<div class="auto-placeholder"><div class="ai-thinking">🤖 AI is analyzing your problem...</div></div>`;
+
+  const messages=[
+    {role:'system',content:AI_SYSTEM_PROMPT},
+    {role:'user',content:problem}
+  ];
+
+  fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':`Bearer ${key}`
+    },
+    body:JSON.stringify({
+      model:model,
+      messages:messages,
+      max_tokens:4096,
+      temperature:0.3
+    })
+  }).then(async r=>{
+    if(!r.ok){
+      const err=await r.json().catch(()=>({}));
+      throw new Error(err.error?.message||`HTTP ${r.status}: ${r.statusText}`);
+    }
+    return r.json();
+  }).then(data=>{
+    const content=data.choices?.[0]?.message?.content||'No response from AI';
+    renderAiResponse(content);
+  }).catch(err=>{
+    responseEl.innerHTML=`<div class="ai-error">❌ Error: ${escapeHtml(err.message)}</div>`;
+  });
+}
+
+function renderAiResponse(content){
+  const el=document.getElementById('ai-response');
+  // Escape HTML first, then handle code blocks
+  let html=escapeHtml(content);
+  // Code blocks
+  html=html.replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
+  // Inline code
+  html=html.replace(/`([^`]+)`/g,'<code>$1</code>');
+  // Bold
+  html=html.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  // Lines
+  html=html.replace(/\n/g,'<br>');
+  el.innerHTML=`<div class="ai-response-content">${html}</div>`;
+}
+
+// Load saved API key on init
+(function(){
+  const savedKey=localStorage.getItem('openai_api_key');
+  if(savedKey){
+    const input=document.getElementById('ai-api-key');
+    if(input){input.value=savedKey}
+  }
+})();
+
 // =============================================
 // Terminal
 // =============================================

@@ -848,10 +848,16 @@
           <div class="autosolver-container">
             <div class="autosolver-header">
               <h2>🧠 Auto CTF Solver</h2>
-              <p>Paste a CTF problem and let the AI engine analyze &amp; solve it automatically.</p>
+              <p>Paste a CTF problem and let the engine analyze &amp; solve it automatically.</p>
             </div>
-            <div class="autosolver-input-area">
-              <textarea id="auto-input" rows="8" placeholder="Paste the CTF challenge here...
+            <div class="tool-tabs">
+              <button class="tab active" data-tab="auto-analyzer">Smart Analyzer</button>
+              <button class="tab" data-tab="auto-ai">🤖 AI Solver</button>
+            </div>
+            <div class="tool-panels">
+              <div class="tool-panel active" id="panel-auto-analyzer">
+                <div class="autosolver-input-area">
+                  <textarea id="auto-input" rows="8" placeholder="Paste the CTF challenge here...
 
 Example:
   n = 984994578921
@@ -867,15 +873,53 @@ Example:
   48656c6c6f20576f726c64
 
 The solver will detect the type and try to decode/solve it."></textarea>
-              <div class="autosolver-actions">
-                <button class="btn btn-auto" onclick="autoSolve()">🔍 Auto Solve</button>
-                <button class="btn btn-clear" onclick="clearIO('auto')">Clear</button>
+                  <div class="autosolver-actions">
+                    <button class="btn btn-auto" onclick="autoSolve()">🔍 Smart Analyze</button>
+<button class="btn btn-clear" onclick="clearAnalyzer()">Clear</button>
+                </div>
+                <div id="auto-results" class="autosolver-results" style="margin-top:1rem">
+                  <div class="auto-placeholder">
+                    <div class="auto-placeholder-icon">⚡</div>
+                    <div>Paste a CTF problem above and click Smart Analyze</div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div id="auto-results" class="autosolver-results">
-              <div class="auto-placeholder">
-                <div class="auto-placeholder-icon">⚡</div>
-                <div>Paste a CTF problem above and click Auto Solve</div>
+              <div class="tool-panel" id="panel-auto-ai">
+                <div class="ai-solver-config">
+                  <div class="field">
+                    <label>OpenAI API Key <span class="text-muted">(stored locally)</span></label>
+                    <div class="ai-key-row">
+                      <input type="password" id="ai-api-key" placeholder="sk-..." />
+                      <button class="btn btn-sm" onclick="saveAiKey()">Save</button>
+                      <button class="btn btn-sm btn-clear" onclick="clearAiKey()">Clear</button>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>Model</label>
+                    <select id="ai-model">
+                      <option value="gpt-4o">GPT-4o</option>
+                      <option value="gpt-4o-mini" selected>GPT-4o-mini</option>
+                      <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                      <option value="o3-mini">o3-mini</option>
+                      <option value="o4-mini">o4-mini</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="autosolver-input-area">
+                  <textarea id="ai-input" rows="6" placeholder="Paste the CTF problem or question here...
+
+The AI will analyze and solve it step by step."></textarea>
+                  <div class="autosolver-actions">
+                    <button class="btn btn-auto" onclick="autoAISolve()">🚀 Send to AI</button>
+                    <button class="btn btn-clear" onclick="clearAiChat()">Clear</button>
+                  </div>
+                </div>
+                <div id="ai-response" class="autosolver-results" style="margin-top:1rem">
+                  <div class="auto-placeholder">
+                    <div class="auto-placeholder-icon">🤖</div>
+                    <div>Enter your OpenAI API key above, paste a problem, and click Send to AI</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
