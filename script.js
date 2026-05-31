@@ -1471,6 +1471,55 @@ function clearAnalyzer(){
 }
 
 // =============================================
+// OS Detection — adapt commands for user's platform
+// =============================================
+function getOSInfo(){
+  const p=navigator.platform||'';
+  const ua=navigator.userAgent||'';
+  let os='Linux',isWin=false;
+  if(p.includes('Win')||ua.includes('Windows')){os='Windows';isWin=true}
+  else if(p.includes('Mac')||ua.includes('Mac')){os='macOS'}
+  else if(p.includes('Linux')||ua.includes('Linux')){os='Linux'}
+  return {os,isWin,arch:navigator.platform};
+}
+
+const OS_CMD_GUIDE = {
+  Windows: {
+    nc: 'Test-NetConnection -Port <port> <host>  (PowerShell) or ncat/nmap',
+    curl: 'curl (comes with PowerShell 5.1+) or Invoke-WebRequest',
+    ping: 'ping -n <count> <host>',
+    nmap: 'nmap (install from https://nmap.org)',
+    netcat_alt: 'Use ncat, Test-NetConnection, or python one-liner: python -c "import socket;s=socket.socket();s.connect((\'host\',port));print(s.recv(1024))"'
+  },
+  Linux: {
+    nc: 'nc <host> <port>  (netcat)',
+    curl: 'curl <url>',
+    ping: 'ping -c <count> <host>',
+    nmap: 'nmap <target>',
+    netcat_alt: 'nc, ncat, or /dev/tcp: cat </dev/tcp/host/port'
+  },
+  macOS: {
+    nc: 'nc <host> <port>  (netcat)',
+    curl: 'curl <url>',
+    ping: 'ping -c <count> <host>',
+    nmap: 'nmap <target>',
+    netcat_alt: 'nc, ncat'
+  }
+};
+
+function osCmd(tool){
+  const {os}=getOSInfo();
+  const guide=OS_CMD_GUIDE[os]||OS_CMD_GUIDE.Linux;
+  return guide[tool]||tool;
+}
+
+function osCmdHint(){
+  const {os,isWin}=getOSInfo();
+  if(isWin) return `[ℹ️ You're on ${os}. Commands like nc/curl may need alternatives. nc → "${osCmd('nc')}", curl → "${osCmd('curl')}", netcat → "${osCmd('netcat_alt')}"]`;
+  return `[ℹ️ You're on ${os}. Using standard Linux/macOS commands.]`;
+}
+
+// =============================================
 // AI Solver (OpenAI API)
 // =============================================
 
@@ -1772,10 +1821,16 @@ async function agentSolve(){
   const analyzerSummary=agentLog.filter(e=>e.step.includes('Smart Analyzer found')).map(e=>e.detail).join('\n');
   const findingsSummary=findings.map(f=>`[${f.tool}] Input: ${f.input}\nOutput: ${f.output}`).join('\n\n');
 
+  const {os,isWin}=getOSInfo();
+  const osHint=isWin
+    ?`[Windows detected — adapt commands!] nc won't work natively. Use: Test-NetConnection, ncat, or python one-liner. curl needs PowerShell Invoke-WebRequest or curl.exe. nmap needs manual install.`
+    :`[${os} detected — standard Unix commands work (nc, curl, etc.)]`;
   const agentPrompt=[
     'You are a CTF solver AI analyzing the results of AUTOMATICALLY RUN TOOLS.',
     'The tools have already decoded data, extracted values, and identified patterns below.',
     'Your job: synthesize these results, find the flag, and explain the solution.',
+    '',
+    osHint,
     '',
     '--- ORIGINAL PROBLEM ---',
     problem,
@@ -1794,7 +1849,8 @@ async function agentSolve(){
     '2. If you see a flag (flag{...}, CTF{...}, picoCTF{...}, etc.), report it',
     '3. If no flag yet, suggest what tool to run next and what to look for',
     '4. Show step-by-step reasoning connecting the findings',
-    '5. Output ONLY the solution, no disclaimers'
+    '5. When suggesting commands, adapt them for the user\'s OS (see OS hint above)',
+    '6. Output ONLY the solution, no disclaimers'
   ].join('\n');
 
   try{
@@ -1851,6 +1907,9 @@ async function autoAISolve(){
     problem=problem.substring(0,120000)+'\n\n[--- truncated: input too large, showing first 120K chars ---]';
     showToast('Input truncated to 120K characters','warn');
   }
+
+  const {os,isWin}=getOSInfo();
+  if(isWin) problem='[USER IS ON WINDOWS. IMPORTANT: nc does NOT exist natively. Use Test-NetConnection, ncat, or suggest python one-liner. Adapt ALL shell commands to Windows equivalents.]\n\n'+problem;
 
   const responseEl=document.getElementById('ai-response');
   responseEl.innerHTML=`<div class="auto-placeholder"><div class="ai-thinking">🤖 AI is analyzing your problem...</div></div>`;
@@ -2173,6 +2232,8 @@ function terminalAI(prompt){
     prompt=prompt.substring(0,120000)+'\n\n[--- truncated: input too large, showing first 120K chars ---]';
     appendTermLine('[AI] Input truncated to 120K characters','term-warn');
   }
+  const {os,isWin}=getOSInfo();
+  if(isWin) prompt='[USER IS ON WINDOWS. Adapt all commands! nc/curl/nmap may not exist natively. Suggest Windows alternatives.]\n\n'+prompt;
   appendTermLine('[AI] Querying AI...','term-muted');
   const provider=document.getElementById('ai-provider')?.value||'backend';
   const key=localStorage.getItem('ai_api_key')||'';
@@ -2236,20 +2297,36 @@ function terminalKill(){
   terminalClear();
 }
 function terminalHelp(){
+  const {os,isWin}=getOSInfo();
   appendTermLine('SUJANSCTFSOLVER Terminal','term-output');
   appendTermLine('─────────────────────────','term-muted');
   appendTermLine('  <command>    Run any system command locally','term-output');
   appendTermLine('  clear        Clear terminal','term-output');
   appendTermLine('  help         Show this help','term-output');
-  appendTermLine('  !ai <msg>    Ask AI about CTF problem','term-ai');
+  appendTermLine('  !ai <msg>    Ask AI about CTF problem (OS-aware)','term-ai');
   appendTermLine('  !explain     Explain last command output with AI','term-muted');
   appendTermLine('  !mode        Toggle local laptop / Kali server','term-muted');
   appendTermLine('','term-output');
-  appendTermLine(`Current mode: ${termMode==='local'?'💻 Local laptop':'☁️ Kali server'}`,`term-${termMode==='local'?'muted':'warn'}`);
+  appendTermLine(`OS: ${os}  Mode: ${termMode==='local'?'💻 Local':'☁️ Kali'}`,'term-muted');
+  if(isWin) appendTermLine('⚠️ Windows: nc/curl not native. Use !ai to get adapted commands.','term-warn');
 }
 function terminalQuick(cmd){
   document.getElementById('terminal-input').value=cmd;
   terminalExecute();
+}
+function osQuick(tool){
+  const {os,isWin}=getOSInfo();
+  const cmds={
+    nmap: isWin?'nmap -sV localhost  (install from https://nmap.org)':'nmap -sV localhost',
+    whoami: isWin?'whoami':'whoami',
+    ipconfig: isWin?'ipconfig /all':'ip a',
+    dir: isWin?'dir':'ls -la',
+    ping: isWin?'ping -n 4 8.8.8.8':'ping -c 4 8.8.8.8',
+    curl: isWin?'curl.exe -I https://example.com  (or Invoke-WebRequest)':'curl -I https://example.com',
+    nc: isWin?'Test-NetConnection -Port 80 example.com':'nc -vz example.com 80'
+  };
+  const cmd=cmds[tool]||tool;
+  terminalQuick(cmd);
 }
 document.getElementById('terminal-input')?.addEventListener('keydown',e=>{
   if(e.key==='Enter') terminalExecute();

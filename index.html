@@ -1010,12 +1010,12 @@ The AI will analyze and solve it step by step."></textarea>
               <button class="btn" onclick="terminalExecute()">Run</button>
             </div>
             <div class="terminal-shortcuts">
-              <button class="term-shortcut" onclick="terminalQuick('nmap -sV localhost')">nmap localhost</button>
-              <button class="term-shortcut" onclick="terminalQuick('whoami')">whoami</button>
-              <button class="term-shortcut" onclick="terminalQuick('ipconfig')">ipconfig</button>
-              <button class="term-shortcut" onclick="terminalQuick('dir')">dir</button>
-              <button class="term-shortcut" onclick="terminalQuick('ping -n 1 8.8.8.8')">ping</button>
-              <button class="term-shortcut" onclick="terminalQuick('curl -I https://example.com')">curl -I</button>
+              <button class="term-shortcut" onclick="osQuick('nmap')">🔍 scan</button>
+              <button class="term-shortcut" onclick="osQuick('whoami')">whoami</button>
+              <button class="term-shortcut" onclick="osQuick('ipconfig')">ip</button>
+              <button class="term-shortcut" onclick="osQuick('dir')">files</button>
+              <button class="term-shortcut" onclick="osQuick('ping')">ping</button>
+              <button class="term-shortcut" onclick="osQuick('curl')">fetch</button>
             </div>
           </div>
         </section>
