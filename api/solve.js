@@ -45,7 +45,7 @@ const SYSTEM_PROMPT = `You are SUJANSCTFSOLVER — an elite AI CTF solver with 9
 - Subdomains: Try common prefixes (admin, dev, api, mail)
 - Social: Check social media, GitHub repos, Pastebin, Shodan
 
-ALWAYS show step-by-step reasoning. Output the flag as 🏴 FLAG: flag{...} when found.`;
+ALWAYS show step-by-step reasoning. Output the flag as FLAG: flag{...} when found.`;
 
 const PROVIDERS = {
   openrouter: {
@@ -84,20 +84,9 @@ const PROVIDERS = {
   }
 };
 
-function parseBody(req) {
-  return new Promise((resolve) => {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      try { resolve(JSON.parse(body)); }
-      catch { resolve({}); }
-    });
-  });
-}
-
 function sendJSON(res, status, data) {
   const json = JSON.stringify(data);
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(json) });
+  res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(json);
 }
 
@@ -106,11 +95,18 @@ module.exports = async (req, res) => {
     return sendJSON(res, 200, {
       endpoint: '/api/solve',
       method: 'POST',
-      body: { problem: 'CTF challenge text', provider: 'openrouter|groq|gemini|openai', model: 'optional' }
+      body: { problem: 'CTF challenge', provider: 'openrouter|groq|gemini|openai', model: 'optional' }
     });
   }
 
-  const data = await parseBody(req);
+  // Read body using async iterator
+  const buffers = [];
+  for await (const chunk of req) buffers.push(chunk);
+  const raw = Buffer.concat(buffers).toString();
+  let data;
+  try { data = JSON.parse(raw); }
+  catch { return sendJSON(res, 400, { success: false, error: 'invalid JSON' }); }
+
   const problem = (data.problem || '').trim();
   const providerName = (data.provider || 'openrouter').trim().toLowerCase();
   const modelOverride = (data.model || '').trim();
@@ -128,7 +124,7 @@ module.exports = async (req, res) => {
   try {
     let result;
     if (providerName === 'gemini') {
-      result = await callGemini(apiKey, config, model, problem, providerName);
+      result = await callGemini(apiKey, config, model, problem);
     } else {
       result = await callChat(apiKey, config, model, problem, providerName);
     }
@@ -184,7 +180,7 @@ function callChat(apiKey, config, model, problem, providerName) {
   });
 }
 
-function callGemini(apiKey, config, model, problem, providerName) {
+function callGemini(apiKey, config, model, problem) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       contents: [{

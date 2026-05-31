@@ -67,31 +67,29 @@ const CATEGORIES = {
   }
 };
 
-function parseBody(req) {
-  return new Promise((resolve) => {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      try { resolve(JSON.parse(body)); }
-      catch { resolve({}); }
-    });
-  });
-}
-
-function sendJSON(res, status, data) {
-  const json = JSON.stringify(data);
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(json) });
-  res.end(json);
-}
-
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
-    return sendJSON(res, 200, { endpoint: '/api/classify', method: 'POST', body: { problem: 'CTF challenge text' } });
+    const json = JSON.stringify({ endpoint: '/api/classify', method: 'POST', body: { problem: 'CTF challenge text' } });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(json);
   }
 
-  const data = await parseBody(req);
+  const buffers = [];
+  for await (const chunk of req) buffers.push(chunk);
+  const raw = Buffer.concat(buffers).toString();
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: false, error: 'invalid JSON: ' + raw.substring(0, 100) }));
+  }
+
   const problem = (data.problem || '').trim();
-  if (!problem) return sendJSON(res, 400, { success: false, error: 'problem is required' });
+  if (!problem) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: false, error: 'problem is required' }));
+  }
 
   const lower = problem.toLowerCase();
   const scores = {};
@@ -104,7 +102,8 @@ module.exports = async (req, res) => {
   }
 
   if (Object.keys(scores).length === 0) {
-    return sendJSON(res, 200, { success: true, classification: 'unknown', confidence: 0, suggested_tools: ['Smart Analyzer', 'AI Solver'] });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, classification: 'unknown', confidence: 0, suggested_tools: ['Smart Analyzer', 'AI Solver'] }));
   }
 
   const entries = Object.entries(scores).sort((a, b) => b[1].score - a[1].score);
@@ -112,12 +111,13 @@ module.exports = async (req, res) => {
   const total = Object.values(scores).reduce((s, v) => s + v.score, 0);
   const confidence = Math.round((best[1].score / total) * 100);
 
-  sendJSON(res, 200, {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
     success: true,
     classification: best[0],
     confidence,
     all_scores: scores,
     suggested_tools: best[1].tools,
     difficulty: best[1].difficulty
-  });
+  }));
 };
