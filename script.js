@@ -1653,6 +1653,186 @@ function formatSize(bytes){
   return (bytes/(1024*1024)).toFixed(1)+'MB';
 }
 
+// =============================================
+// Auto Agent — runs tools + AI to actually solve challenges
+// =============================================
+let agentLog=[];
+
+function agentLogMsg(step,detail){
+  agentLog.push({step,detail});
+}
+
+function agentRenderLog(){
+  const el=document.getElementById('ai-response');
+  let html='<div class="agent-report">';
+  html+='<div class="agent-header" style="padding:8px 12px;background:var(--bg-tertiary);border-radius:6px;margin-bottom:8px;font-size:.85rem">🤖 <strong>Auto Agent Report</strong></div>';
+  for(const entry of agentLog){
+    const icon=entry.step.includes('✅')?'✅':entry.step.includes('❌')?'❌':entry.step.includes('🏴')?'🏴':entry.step.includes('🔍')?'🔍':entry.step.includes('🧮')?'🧮':'⚙️';
+    html+=`<div class="agent-step" style="padding:4px 8px;margin:2px 0;background:rgba(255,255,255,.03);border-radius:4px;font-size:.78rem">`;
+    html+=`<span style="color:var(--text-muted)">${icon}</span> <strong>${escapeHtml(entry.step)}</strong>`;
+    if(entry.detail) html+=`<div style="padding:4px 8px;margin:4px 0;background:rgba(0,0,0,.2);border-radius:3px;font-family:var(--font-mono);font-size:.72rem;color:var(--text-secondary);white-space:pre-wrap;max-height:200px;overflow-y:auto">${escapeHtml(entry.detail)}</div>`;
+    html+='</div>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+async function agentSolve(){
+  const problem=document.getElementById('ai-input').value.trim();
+  const fileList=document.getElementById('file-list');
+  const fileNames=[];
+  if(fileList){
+    fileList.querySelectorAll('.file-name').forEach(el=>fileNames.push(el.textContent));
+  }
+  if(!problem&&fileNames.length===0){showToast('Enter a CTF problem or upload a file first','warn');return}
+
+  const responseEl=document.getElementById('ai-response');
+  agentLog=[];
+  agentLogMsg('🔍 Starting Auto Agent analysis...','');
+  agentRenderLog();
+
+  // Step 1: Run Smart Analyzer
+  agentLogMsg('🔍 Running Smart Analyzer (14 checks)...','');
+  agentRenderLog();
+  const autoInput=document.getElementById('auto-input');
+  const autoResults=document.getElementById('auto-results');
+  if(autoInput&&autoResults){
+    autoInput.value=problem;
+    clearAnalyzer();
+    autoSolve();
+    await new Promise(r=>setTimeout(r,500));
+    const resultTexts=[];
+    autoResults.querySelectorAll('.auto-step-body').forEach(el=>{
+      const txt=el.textContent.trim();
+      if(txt) resultTexts.push(txt.substring(0,500));
+    });
+    if(resultTexts.length>0){
+      agentLogMsg('✅ Smart Analyzer found '+resultTexts.length+' findings',resultTexts.join('\n\n'));
+      agentLogMsg('🧮 Running additional decoders based on findings...','');
+    }else{
+      agentLogMsg('ℹ️ Smart Analyzer found no obvious patterns','');
+    }
+  }else{
+    agentLogMsg('ℹ️ Smart Analyzer not available','');
+  }
+  agentRenderLog();
+
+  // Step 2: Auto-run crypto decoders on problem text
+  const lines=problem.split('\n').filter(l=>l.trim());
+  const findings=[];
+
+  for(const line of lines){
+    const trimmed=line.trim();
+    // Base64
+    if(/^[A-Za-z0-9+/]*={0,2}$/.test(trimmed)&&trimmed.length>10&&trimmed.length%4===0){
+      try{
+        const decoded=atob(trimmed);
+        if(/[a-zA-Z]{4,}/.test(decoded)){
+          findings.push({tool:'Base64 Decode',input:trimmed.substring(0,80),output:decoded.substring(0,200)});
+        }
+      }catch(e){}
+    }
+    // Hex
+    if(/^[0-9a-fA-F]+$/.test(trimmed)&&trimmed.length%2===0&&trimmed.length>4){
+      try{
+        const decoded=trimmed.match(/.{1,2}/g).map(b=>String.fromCharCode(parseInt(b,16))).join('');
+        if(/[a-zA-Z0-9\s]{4,}/.test(decoded)){
+          findings.push({tool:'Hex Decode',input:trimmed.substring(0,80),output:decoded.substring(0,200)});
+        }
+      }catch(e){}
+    }
+    // ROT brute
+    if(/^[a-zA-Z\s]+$/.test(trimmed)&&trimmed.length>5){
+      for(let shift=1;shift<26;shift++){
+        const rotated=trimmed.split('').map(c=>{
+          if(c>='a'&&c<='z') return String.fromCharCode((c.charCodeAt(0)-97+shift)%26+97);
+          if(c>='A'&&c<='Z') return String.fromCharCode((c.charCodeAt(0)-65+shift)%26+65);
+          return c;
+        }).join('');
+        if(/(the|this|flag|ctf|is |are |was |for |and |not |you |can |key |has |cipher|encrypt|decrypt|password|admin|user|login)/i.test(rotated)){
+          findings.push({tool:`ROT${shift}`,input:trimmed.substring(0,80),output:rotated.substring(0,200)});
+          break;
+        }
+      }
+    }
+  }
+
+  if(findings.length>0){
+    const detail=findings.map(f=>`${f.tool}: ${f.output}`).join('\n\n');
+    agentLogMsg('🧮 Found '+findings.length+' decoded values from auto-analysis',detail);
+  }else{
+    agentLogMsg('ℹ️ No encoded strings auto-detected, sending raw problem to AI','');
+  }
+  agentRenderLog();
+
+  // Step 3: Send everything to AI
+  agentLogMsg('🤖 Sending all findings to AI for analysis...','');
+  agentRenderLog();
+
+  const analyzerSummary=agentLog.filter(e=>e.step.includes('Smart Analyzer found')).map(e=>e.detail).join('\n');
+  const findingsSummary=findings.map(f=>`[${f.tool}] Input: ${f.input}\nOutput: ${f.output}`).join('\n\n');
+
+  const agentPrompt=[
+    'You are a CTF solver AI analyzing the results of AUTOMATICALLY RUN TOOLS.',
+    'The tools have already decoded data, extracted values, and identified patterns below.',
+    'Your job: synthesize these results, find the flag, and explain the solution.',
+    '',
+    '--- ORIGINAL PROBLEM ---',
+    problem,
+    '',
+    '--- UPLOADED FILES ---',
+    fileNames.length>0?fileNames.join(', '):'(none)',
+    '',
+    '--- SMART ANALYZER FINDINGS ---',
+    analyzerSummary||'(none)',
+    '',
+    '--- AUTO-DECODED VALUES ---',
+    findingsSummary||'(none)',
+    '',
+    '--- INSTRUCTIONS ---',
+    '1. Analyze all the decoded data and tool findings above',
+    '2. If you see a flag (flag{...}, CTF{...}, picoCTF{...}, etc.), report it',
+    '3. If no flag yet, suggest what tool to run next and what to look for',
+    '4. Show step-by-step reasoning connecting the findings',
+    '5. Output ONLY the solution, no disclaimers'
+  ].join('\n');
+
+  try{
+    const provider=document.getElementById('ai-provider')?.value||'gemini';
+    const key=localStorage.getItem('ai_api_key')||'';
+    let content;
+    if(provider==='backend'){
+      const bm=document.getElementById('ai-backend-model')?.value||'gemini';
+      content=await callBackendAI(agentPrompt,bm);
+    }else if(provider==='openrouter'){
+      content=await callOpenRouter(key,agentPrompt);
+    }else if(provider==='groq'){
+      content=await callGroq(key,agentPrompt);
+    }else if(provider==='gemini'){
+      content=await callGemini(key,agentPrompt);
+    }else if(provider==='openai'){
+      content=await callOpenAI(key,agentPrompt);
+    }else if(provider==='custom'){
+      content=await callCustom(key,agentPrompt);
+    }else{
+      content='No provider configured. Select one in AI Solver tab.';
+    }
+    if(content){
+      agentLogMsg('🤖 AI Analysis',content);
+      // Check for flag in AI response
+      const flagMatch=content.match(/flag\{[^}]+\}|CTF\{[^}]+\}|picoCTF\{[^}]+\}/i);
+      if(flagMatch){
+        agentLogMsg('🏴 FLAG FOUND: '+flagMatch[0],'The AI identified the flag in the analysis above.');
+      }
+    }
+  }catch(err){
+    agentLogMsg('❌ AI Analysis Error',err.message);
+  }
+  agentRenderLog();
+  agentLogMsg('✅ Agent complete. Scroll through the steps above to see what was found.','');
+  agentRenderLog();
+}
+
 async function autoAISolve(){
   const provider=document.getElementById('ai-provider').value;
   const keyInput=document.getElementById('ai-api-key').value.trim();

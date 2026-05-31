@@ -628,6 +628,8 @@ body{
 .autosolver-actions{display:flex;gap:.6rem;margin-top:.6rem}
 .btn-auto{background:rgba(0,255,136,.12);border-color:var(--accent);font-size:.78rem;padding:.6rem 1.4rem}
 .btn-auto:hover{background:rgba(0,255,136,.2);box-shadow:0 0 16px rgba(0,255,136,.15)}
+.btn-agent{background:rgba(108,92,231,.12);border-color:var(--purple);font-size:.78rem;padding:.6rem 1.4rem}
+.btn-agent:hover{background:rgba(108,92,231,.2);box-shadow:0 0 16px rgba(108,92,231,.15)}
 .autosolver-results{
   background:var(--bg-card);
   border:1px solid var(--border);
