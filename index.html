@@ -987,6 +987,11 @@ The AI will analyze and solve it step by step."></textarea>
                     <div>Select a provider, enter your API key, paste a problem, and click Send to AI</div>
                   </div>
                 </div>
+                <div id="paste-fallback" style="display:none;margin-top:.8rem;padding:.8rem;background:rgba(255,165,0,.08);border:1px dashed rgba(255,165,0,.3);border-radius:8px">
+                  <div style="font-size:.82rem;font-weight:600;margin-bottom:6px;color:#ffa500">🔄 Server unreachable — paste raw nc output instead:</div>
+                  <textarea id="paste-data" rows="8" style="width:100%;background:#111;color:#ccc;border:1px solid #333;border-radius:6px;padding:10px;font-family:var(--font-mono);font-size:.75rem;resize:vertical" placeholder="Paste output from: nc mysterious-sea.picoctf.net 64282"></textarea>
+                  <button class="btn btn-solve" style="margin-top:6px" onclick="decodePastedData()">🔓 Decode Pasted Data</button>
+                </div>
               </div>
             </div>
           </div>

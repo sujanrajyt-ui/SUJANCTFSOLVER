@@ -1949,23 +1949,32 @@ async function solveChallenge(){
 
   if(match){
     const host=match[1]; const port=match[2];
+    const pasteFallback=document.getElementById('paste-fallback');
+    const pasteArea=document.getElementById('paste-data');
+    if(pasteArea) pasteArea.placeholder='Paste output from: nc '+host+' '+port;
     solveLogMsg('🔌 Connecting to '+host+':'+port,'Attempting TCP connection via server...','connect');
     solveRenderLog();
+    let connected=false;
     try{
       const res=await fetch('/api/connect',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({host,port,timeout:15000})
+        body:JSON.stringify({host,port,timeout:20000})
       });
       const data=await res.json();
       if(data.success&&data.data){
         challengeText=data.data;
+        connected=true;
         solveLogMsg('📦 Received '+(data.data.length)+' bytes from server',data.data.trim().substring(0,2000),'data');
       }else{
         solveLogMsg('⚠️ Server connection: '+ (data.note||'empty response'),'Using original input text instead','warn');
       }
     }catch(e){
-      solveLogMsg('❌ Connection failed: '+e.message,'Falling back to input text','error');
+      solveLogMsg('❌ Connection failed: '+e.message,'error');
+    }
+    if(!connected){
+      solveLogMsg('💡 Tip','Run this locally: nc '+host+' '+port+'\nThen paste the output in the orange box below.','warn');
+      if(pasteFallback) pasteFallback.style.display='block';
     }
     solveRenderLog();
   }else{
@@ -2077,6 +2086,70 @@ async function solveChallenge(){
   }
   solveRenderLog();
   solveLogMsg('✅ Solver complete','','success');
+  solveRenderLog();
+}
+
+async function decodePastedData(){
+  const data=document.getElementById('paste-data').value.trim();
+  if(!data){showToast('Paste the server output first','warn');return}
+  solveLog=[];
+  solveLogMsg('📦 Raw data pasted by user',data.substring(0,2000),'data');
+  solveRenderLog();
+  const autoInput=document.getElementById('auto-input');
+  const autoResults=document.getElementById('auto-results');
+  if(autoInput&&autoResults){
+    autoInput.value=data;
+    clearAnalyzer();
+    autoSolve();
+    await new Promise(r=>setTimeout(r,300));
+  }
+
+  // Run deep decode on pasted data
+  solveLogMsg('🔍 Running decoder pipeline...','','info');
+  solveRenderLog();
+
+  const lines=data.split('\n').filter(l=>l.trim());
+  for(const line of lines){
+    const t=line.trim();
+    if(!t||t.length<4) continue;
+    try{
+      const chainResult=window.deepDecode(t);
+      if(chainResult){
+        solveLogMsg('🔓 Deep chain decoded',chainResult.substring(0,500),'decode');
+        const flag=chainResult.match(/(?:picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);
+        if(flag) solveLogMsg('🏴 FLAG FOUND!',flag[0],'flag');
+      }
+    }catch(e){}
+  }
+
+  // Run individual decoders
+  for(const line of lines){
+    const t=line.trim();
+    if(!t||t.length<4) continue;
+    if(/^[A-Za-z0-9+/]*={0,2}$/.test(t)&&t.length%4===0&&t.length>10){
+      try{
+        const d=atob(t);
+        if(/[a-zA-Z]{4,}/.test(d)){const f=d.match(/(picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);solveLogMsg('Base64 → '+d.substring(0,80),d.substring(0,500),'decode');if(f)solveLogMsg('🏴 FLAG!',f[0],'flag')}
+      }catch(e){}
+    }
+    if(/^[0-9a-fA-F]+$/.test(t)&&t.length%2===0&&t.length>4){
+      try{
+        const d=t.match(/.{1,2}/g).map(b=>String.fromCharCode(parseInt(b,16))).join('');
+        if(/[a-zA-Z0-9\s]{4,}/.test(d)){const f=d.match(/(picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);solveLogMsg('Hex → '+d.substring(0,80),d.substring(0,500),'decode');if(f)solveLogMsg('🏴 FLAG!',f[0],'flag')}
+      }catch(e){}
+    }
+  }
+
+  solveRenderLog();
+  const allFlags=[];
+  solveLog.forEach(e=>{const m=e.detail.match(/(picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);if(m) allFlags.push(m[0])});
+  if(allFlags.length>0){
+    solveLogMsg('🏴 SOLVED! Flags: '+allFlags.length,allFlags.join('\n'),'flag');
+  }else{
+    solveLogMsg('ℹ️ No flag found in pasted data','Try using AI Solver for analysis','info');
+  }
+  solveRenderLog();
+  solveLogMsg('✅ Decode complete','','success');
   solveRenderLog();
 }
 
