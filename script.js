@@ -1581,6 +1581,71 @@ function clearAiChat(){
   const el=document.getElementById('ai-response');
   el.innerHTML=`<div class="auto-placeholder"><div class="auto-placeholder-icon">🤖</div><div>Select a provider, enter your API key, paste a problem, and click Send to AI</div></div>`;
   document.getElementById('ai-input').value='';
+  document.getElementById('file-list').innerHTML='';
+}
+
+// File upload for AI Solver
+function setupFileUpload(){
+  const drop=document.getElementById('file-upload-drop');
+  const input=document.getElementById('file-input');
+  if(!drop||!input) return;
+  drop.addEventListener('click',()=>input.click());
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('dragover')});
+  drop.addEventListener('dragleave',()=>drop.classList.remove('dragover'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('dragover');handleFiles(e.dataTransfer.files)});
+  input.addEventListener('change',()=>{handleFiles(input.files);input.value=''});
+}
+
+const MAX_FILE_SIZE=5*1024*1024;
+const TEXT_EXTS=['txt','md','json','xml','html','css','js','py','cpp','c','h','java','php','rb','go','rs','sh','bat','ps1','sql','csv','yaml','yml','toml','ini','cfg','conf','log','env','pem','key','asc','pgp','hex','bin'];
+const BINARY_EXTS=['png','jpg','jpeg','gif','bmp','svg','ico','pcap','pcapng','zip','rar','7z','tar','gz','bz2','xz','pdf','doc','docx','xls','xlsx','ppt','pptx','elf','exe','dll','so','dmg','iso','img','raw','dd','vhd','vmdk','e01'];
+
+function handleFiles(files){
+  const list=document.getElementById('file-list');
+  for(const file of files){
+    if(file.size>MAX_FILE_SIZE){showToast(`${file.name}: File too large (max 5MB)`,'error');continue}
+    const ext=file.name.split('.').pop().toLowerCase();
+    const item=document.createElement('div');item.className='file-item';
+    item.innerHTML=`<span class="file-name">${escapeHtml(file.name)}</span><span class="file-size">${formatSize(file.size)}</span><button class="file-remove" onclick="this.parentElement.remove()">×</button>`;
+    list.appendChild(item);
+    if(TEXT_EXTS.includes(ext)){
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const ta=document.getElementById('ai-input');
+        const sep=ta.value?'\n\n--- ${file.name} ---\n\n':'';
+        ta.value+=sep+reader.result;
+        ta.dispatchEvent(new Event('input'));
+      };
+      reader.readAsText(file);
+    }else if(BINARY_EXTS.includes(ext)){
+      showToast(`${file.name}: Binary file (${ext}), showing hex preview`,'warn');
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const bytes=new Uint8Array(reader.result);
+        let hex='';const max=Math.min(bytes.length,512);
+        for(let i=0;i<max;i++) hex+=bytes[i].toString(16).padStart(2,'0')+(i%16===15?'\n':' ');
+        const ta=document.getElementById('ai-input');
+        const sep=ta.value?'\n\n--- ${file.name} (hex preview, ${bytes.length} bytes) ---\n\n':'';
+        ta.value+=sep+hex;
+      };
+      reader.readAsArrayBuffer(file);
+    }else{
+      showToast(`${file.name}: Unknown type, reading as text`,'warn');
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const ta=document.getElementById('ai-input');
+        const sep=ta.value?'\n\n--- ${file.name} ---\n\n':'';
+        ta.value+=sep+reader.result.substring(0,10000);
+      };
+      reader.readAsText(file);
+    }
+  }
+}
+
+function formatSize(bytes){
+  if(bytes<1024) return bytes+'B';
+  if(bytes<1024*1024) return (bytes/1024).toFixed(1)+'KB';
+  return (bytes/(1024*1024)).toFixed(1)+'MB';
 }
 
 async function autoAISolve(){
@@ -1936,4 +2001,5 @@ function totoBigInt(v){
 // =============================================
 checkKaliStatus();
 setInterval(checkKaliStatus,30000);
+setupFileUpload();
 navigateTo('dashboard');

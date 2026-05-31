@@ -957,6 +957,14 @@ The solver will detect the type and try to decode/solve it."></textarea>
                   <textarea id="ai-input" rows="6" placeholder="Paste the CTF problem or question here...
 
 The AI will analyze and solve it step by step."></textarea>
+                  <div class="file-upload-area" id="file-upload-area">
+                    <div class="file-upload-drop" id="file-upload-drop">
+                      <span class="file-upload-icon">📁</span>
+                      <span>Drop files here or <a href="#" onclick="document.getElementById('file-input').click();return false">browse</a></span>
+                      <input type="file" id="file-input" multiple hidden />
+                    </div>
+                    <div class="file-list" id="file-list"></div>
+                  </div>
                   <div class="autosolver-actions">
                     <button class="btn btn-auto" onclick="autoAISolve()">🚀 Send to AI</button>
                     <button class="btn btn-clear" onclick="clearAiChat()">Clear</button>

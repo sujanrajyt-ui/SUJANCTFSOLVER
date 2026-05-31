@@ -683,6 +683,35 @@ body{
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
 
+/* File Upload */
+.file-upload-area{margin:.5rem 0}
+.file-upload-drop{
+  border:2px dashed var(--border);border-radius:8px;
+  padding:1rem;text-align:center;cursor:pointer;
+  color:var(--text-muted);transition:all .2s;
+  background:rgba(255,255,255,.02);
+}
+.file-upload-drop:hover,.file-upload-drop.dragover{
+  border-color:var(--accent);background:rgba(0,255,136,.05);
+  color:var(--text-primary);
+}
+.file-upload-icon{font-size:1.2rem;margin-right:.5rem}
+.file-upload-drop a{color:var(--accent);text-decoration:none}
+.file-upload-drop a:hover{text-decoration:underline}
+.file-list{margin-top:.5rem;display:flex;flex-direction:column;gap:4px}
+.file-item{
+  display:flex;align-items:center;gap:.5rem;
+  padding:.3rem .6rem;border-radius:4px;
+  background:rgba(255,255,255,.05);font-size:.85rem;
+}
+.file-item .file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-item .file-size{color:var(--text-muted);font-family:var(--font-mono);font-size:.75rem}
+.file-item .file-remove{
+  cursor:pointer;color:var(--red);opacity:.7;
+  background:none;border:none;font-size:1rem;
+}
+.file-item .file-remove:hover{opacity:1}
+
 /* Glass */
 .glass{background:rgba(19,27,46,.6);backdrop-filter:blur(12px);border:1px solid var(--border)}
 
