@@ -887,31 +887,31 @@ The solver will detect the type and try to decode/solve it."></textarea>
               <div class="tool-panel" id="panel-auto-ai">
                 <div class="ai-solver-config">
                   <div class="field">
-                    <label>API URL <span class="text-muted">(any OpenAI-compatible endpoint)</span></label>
-                    <input type="text" id="ai-api-url" placeholder="https://api.openai.com/v1/chat/completions" />
+                    <label>AI Provider</label>
+                    <select id="ai-provider">
+                      <option value="openai">OpenAI (requires API key)</option>
+                      <option value="gemini" selected>Google Gemini (free tier, needs free key)</option>
+                      <option value="custom">Custom API</option>
+                    </select>
                   </div>
                   <div class="field">
                     <label>API Key <span class="text-muted">(stored locally)</span></label>
                     <div class="ai-key-row">
-                      <input type="password" id="ai-api-key" placeholder="sk-... or leave blank if not needed" />
+                      <input type="password" id="ai-api-key" placeholder="Get a free Gemini key at https://aistudio.google.com/apikey" />
                       <button class="btn btn-sm" onclick="saveAiConfig()">Save</button>
                       <button class="btn btn-sm btn-clear" onclick="clearAiConfig()">Clear</button>
                     </div>
                   </div>
-                  <div class="field">
-                    <label>Model</label>
-                    <select id="ai-model">
-                      <option value="gpt-4o">GPT-4o</option>
-                      <option value="gpt-4o-mini" selected>GPT-4o-mini</option>
-                      <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                      <option value="o3-mini">o3-mini</option>
-                      <option value="o4-mini">o4-mini</option>
-                      <option value="custom">Custom (type below)</option>
-                    </select>
+                  <div class="field" id="ai-custom-url-field" style="display:none">
+                    <label>Custom API URL <span class="text-muted">(OpenAI-compatible)</span></label>
+                    <input type="text" id="ai-custom-url" placeholder="https://your-api.com/v1/chat/completions" />
                   </div>
                   <div class="field" id="ai-custom-model-field" style="display:none">
                     <label>Custom Model Name</label>
                     <input type="text" id="ai-custom-model" placeholder="e.g. llama3, deepseek-coder, mistral" />
+                  </div>
+                  <div class="ai-provider-info" id="ai-provider-info">
+                    💡 <strong>Gemini is free!</strong> Get a key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — no credit card needed, 60 requests/minute free.
                   </div>
                 </div>
                 <div class="autosolver-input-area">
@@ -926,7 +926,7 @@ The AI will analyze and solve it step by step."></textarea>
                 <div id="ai-response" class="autosolver-results" style="margin-top:1rem">
                   <div class="auto-placeholder">
                     <div class="auto-placeholder-icon">🤖</div>
-                    <div>Configure your API endpoint above, paste a problem, and click Send to AI</div>
+                    <div>Select a provider, enter your API key, paste a problem, and click Send to AI</div>
                   </div>
                 </div>
               </div>

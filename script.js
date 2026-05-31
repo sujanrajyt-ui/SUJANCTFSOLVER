@@ -1089,82 +1089,104 @@ function autoSolve(){
     return false;
   }
 
-  // Analysis 3: Extract all encoded-looking strings
+  // Analysis 3: Deep Recursive Decoding Engine
+  // Tries all known encodings and chains them recursively
+  function deepDecode(input, chain=[], depth=0){
+    if(depth>6||!input||input.length<2) return null;
+    const checkPrintable=s=>/^[ -~]+$/.test(s)&&s.length>1;
+
+    const decoders=[
+      {name:'Base64',test:s=>/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s)&&s.length>8,
+        decode:s=>{const r=atob(s);if(checkPrintable(r))return r;return null}},
+      {name:'Base32',test:s=>/^[A-Z2-7]+=*$/.test(s)&&s.length>8,
+        decode:s=>{
+          const t=s.replace(/=+$/,'');const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+          let bits='';for(const c of t){const idx=chars.indexOf(c);if(idx===-1)throw Error;bits+=idx.toString(2).padStart(5,'0')}
+          let out='';for(let i=0;i<bits.length-7;i+=8)out+=String.fromCharCode(parseInt(bits.substring(i,i+8),2));
+          return out.length>1&&checkPrintable(out)?out:null}},
+      {name:'Hex',test:s=>/^[a-fA-F0-9]+$/.test(s)&&s.length>4&&s.length%2===0,
+        decode:s=>{const out=String.fromCharCode(...s.match(/.{1,2}/g).map(b=>parseInt(b,16)));return checkPrintable(out)?out:null}},
+      {name:'Binary',test:s=>/^[01]+$/.test(s)&&s.length>8&&s.length%8===0,
+        decode:s=>{const out=s.match(/.{1,8}/g).map(b=>String.fromCharCode(parseInt(b,2))).join('');return checkPrintable(out)?out:null}},
+      {name:'Decimal ASCII',test:s=>/^(\d{2,3}\s?){3,}$/.test(s.trim()),
+        decode:s=>{const nums=s.trim().split(/\s+/).map(Number);if(nums.some(n=>n<32||n>126))return null;return String.fromCharCode(...nums)}},
+      {name:'ROT13',test:s=>(s.match(/[a-zA-Z]/g)||[]).length>4,
+        decode:s=>{const r=rotShift(s,13);return/\b(the|this|flag|ctf|is|are|was|for|and|not|you|can|key|has|decrypt|encrypt|cipher|text|message|secret|password|admin|user|login|base64|hex|binary|rot|xor)\b/i.test(r)?r:null}},
+      {name:'ROT47',test:s=>(s.match(/[!-~]/g)||[]).length>4,
+        decode:s=>s.replace(/[!-~]/g,c=>String.fromCharCode(33+(c.charCodeAt(0)-33+47)%94))},
+      {name:'Atbash',test:s=>(s.match(/[a-zA-Z]/g)||[]).length>4,
+        decode:s=>{const r=s.replace(/[a-zA-Z]/g,c=>{const base=c<='Z'?65:97;return String.fromCharCode(25-(c.charCodeAt(0)-base)+base)});return/\b(the|this|flag|ctf|is|are|was|for|and|not|you|can|key|has)\b/i.test(r)?r:null}},
+      {name:'Reversed',test:s=>s.length>4,
+        decode:s=>{const r=Array.from(s).reverse().join('');return/\b(flag|ctf|galf|ftc)\b/i.test(r)?r:null}},
+      {name:'URL Decode',test:s=>/%[0-9a-fA-F]{2}/.test(s),
+        decode:s=>{const r=decodeURIComponent(s);return checkPrintable(r)?r:null}},
+      {name:'HTML Entities',test:s=>/&[a-z]+;|&#\d+;/.test(s),
+        decode:s=>{const t=document.createElement('textarea');t.innerHTML=s;const r=t.value;return r!==s&&checkPrintable(r)?r:null}},
+    ];
+
+    // Also try all ROT shifts (1-25) on alphabetic text
+    const rotDecoders=[];
+    if((input.match(/[a-zA-Z]/g)||[]).length>4){
+      for(let i=1;i<=25;i++){
+        if(i===13) continue; // already handled above
+        const shifted=rotShift(input,i);
+        if(/\b(the|this|flag|ctf|is|are|was|for|and|not|you|can|key|has|decrypt|encrypt|cipher|text|message|secret|password|admin|user|login|base64|hex|binary|rot|xor)\b/i.test(shifted)){
+          rotDecoders.push({name:`ROT${i}`,test:()=>true,decode:()=>shifted});
+          break;
+        }
+      }
+    }
+
+    const allDecoders=[...decoders,...rotDecoders];
+
+    for(const dec of allDecoders){
+      try{
+        if(!dec.test||dec.test(input)){
+          const result=dec.decode(input);
+          if(result&&result!==input){
+            const newChain=[...chain,`${dec.name}→"${result.substring(0,50)}${result.length>50?'...':''}"`];
+            const flag=checkFlag(result);
+            if(flag){
+              addStep(`🏴 Decoded via ${dec.name}`,newChain.join(' → ')+`\n\n✅ FINAL: ${escapeHtml(result)}\n\n<span class="found-flag">🏴 FLAG: ${escapeHtml(flag)}</span>`,'success');
+              return result;
+            }
+            // Recurse deeper
+            const deeper=deepDecode(result,newChain,depth+1);
+            if(deeper){
+              addStep(`🔗 Decoding Chain: ${dec.name}`,newChain.join(' → ')+`\n\n→ ${escapeHtml(result)}`,'success');
+              return deeper;
+            }
+            // If printable English-ish, show it
+            if(/^[a-zA-Z0-9\s,.!?;:()\-_'"]+$/.test(result)&&(result.match(/\b(the|this|is|are|was|for|and|not|you|can|has|hex|flag|ctf|key)/gi)||[]).length>1){
+              addStep(`✅ ${dec.name} → English text`,escapeHtml(result.substring(0,500)),'success');
+              const f=checkFlag(result);if(f)addStep('🏴 Flag Found',`<span class="found-flag">${escapeHtml(f)}</span>`,'success');
+              return result;
+            }
+          }
+        }
+      }catch(e){}
+    }
+    return null;
+  }
+
   function checkEncoded(){
     const candidates=[];
     const lines=text.split('\n');
     for(const line of lines){
-      const trimmed=line.trim().split(/[\s,;:=()]+/);
-      for(const w of trimmed){
-        const word=w.replace(/[^a-fA-F0-9+/=]/g,'');
-        if(word.length>=4) candidates.push(word);
+      const parts=line.trim().split(/[\s,;:=()]+/);
+      for(const w of parts){
+        const cleaned=w.replace(/[^a-fA-F0-9+/=]/g,'');
+        if(cleaned.length>=4) candidates.push(cleaned);
+        // Also add the raw word
+        if(w.length>=4) candidates.push(w);
       }
     }
-
-    // Remove duplicates
     const unique=[...new Set(candidates)].filter(w=>w.length>=4);
-
-    let foundAny=false;
-
-    // Base64 detection
     for(const word of unique){
-      if(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(word)&&word.length>8){
-        const dec=tryDecode('Base64 detected',word,s=>{const r=atob(s);if(!/[^\x20-\x7E\n\r\t]/.test(r)||/^[a-zA-Z0-9\s,.!?;:()\-_]+$/.test(r))return r;return null});
-        if(dec){foundAny=true;break}
-      }
+      const result=deepDecode(word);
+      if(result) return true;
     }
-
-    // Base32
-    if(!foundAny){
-      for(const word of unique){
-        if(/^[A-Z2-7]+=*$/.test(word)&&word.length>8){
-          const dec=tryDecode('Base32 detected',word,s=>{
-            const t=s.replace(/=+$/,'');
-            const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-            let bits='';
-            for(const c of t){const idx=chars.indexOf(c);if(idx===-1)throw Error;bits+=idx.toString(2).padStart(5,'0')}
-            let out='';
-            for(let i=0;i<bits.length-7;i+=8){
-              const b=parseInt(bits.substring(i,i+8),2);
-              if(b>=32&&b<=126) out+=String.fromCharCode(b);
-            }
-            return out.length>1?out:null;
-          });
-          if(dec){foundAny=true;break}
-        }
-      }
-    }
-
-    // Hex
-    if(!foundAny){
-      for(const word of unique){
-        if(/^[a-fA-F0-9]+$/.test(word)&&word.length>4&&word.length%2===0){
-          const dec=tryDecode('Hex encoded data',word,s=>{
-            const bytes=s.match(/.{1,2}/g).map(b=>parseInt(b,16));
-            const out=String.fromCharCode(...bytes);
-            if(/^[ -~]+$/.test(out)) return out;
-            return null;
-          });
-          if(dec){foundAny=true;break}
-        }
-      }
-    }
-
-    // Binary
-    if(!foundAny){
-      for(const word of unique){
-        if(/^[01]+$/.test(word)&&word.length>8&&word.length%8===0){
-          const dec=tryDecode('Binary data detected',word,s=>{
-            const out=s.match(/.{1,8}/g).map(b=>String.fromCharCode(parseInt(b,2))).join('');
-            if(/^[ -~]+$/.test(out)) return out;
-            return null;
-          });
-          if(dec){foundAny=true;break}
-        }
-      }
-    }
-
-    return foundAny;
+    return false;
   }
 
   // Analysis 4: Caesar/ROT brute force
@@ -1406,7 +1428,7 @@ function autoSolve(){
     {name:'Morse Code',fn:checkMorse},
     {name:'URL Encoding',fn:checkURL},
     {name:'Numbers to ASCII',fn:checkNumbersAscii},
-    {name:'Base64/Hex/Binary',fn:checkEncoded},
+    {name:'Deep Recursive Decoder',fn:checkEncoded},
     {name:'XOR Brute Force',fn:checkXOR},
     {name:'Caesar/ROT Cipher',fn:checkROT},
     {name:'Atbash Cipher',fn:checkAtbash},
@@ -1468,113 +1490,171 @@ Rules:
 
 function saveAiConfig(){
   const key=document.getElementById('ai-api-key').value.trim();
-  const url=document.getElementById('ai-api-url').value.trim();
-  localStorage.setItem('ai_api_url',url||'https://api.openai.com/v1/chat/completions');
+  const provider=document.getElementById('ai-provider').value;
+  const customUrl=document.getElementById('ai-custom-url')?.value.trim()||'';
+  const customModel=document.getElementById('ai-custom-model')?.value.trim()||'';
+  localStorage.setItem('ai_provider',provider);
   if(key) localStorage.setItem('ai_api_key',key);
+  if(customUrl) localStorage.setItem('ai_custom_url',customUrl);
+  if(customModel) localStorage.setItem('ai_custom_model',customModel);
   showToast('AI config saved locally');
 }
 
 function clearAiConfig(){
   localStorage.removeItem('ai_api_key');
-  localStorage.removeItem('ai_api_url');
+  localStorage.removeItem('ai_provider');
+  localStorage.removeItem('ai_custom_url');
+  localStorage.removeItem('ai_custom_model');
   document.getElementById('ai-api-key').value='';
-  document.getElementById('ai-api-url').value='https://api.openai.com/v1/chat/completions';
+  document.getElementById('ai-custom-url').value='';
+  document.getElementById('ai-custom-model').value='';
   showToast('AI config cleared','warn');
 }
 
 function clearAiChat(){
   const el=document.getElementById('ai-response');
-  el.innerHTML=`<div class="auto-placeholder"><div class="auto-placeholder-icon">🤖</div><div>Configure your API endpoint above, paste a problem, and click Send to AI</div></div>`;
+  el.innerHTML=`<div class="auto-placeholder"><div class="auto-placeholder-icon">🤖</div><div>Select a provider, enter your API key, paste a problem, and click Send to AI</div></div>`;
   document.getElementById('ai-input').value='';
 }
 
-function autoAISolve(){
+async function autoAISolve(){
+  const provider=document.getElementById('ai-provider').value;
+  const keyInput=document.getElementById('ai-api-key').value.trim();
   const savedKey=localStorage.getItem('ai_api_key');
-  const key=savedKey||document.getElementById('ai-api-key').value.trim();
-  const savedUrl=localStorage.getItem('ai_api_url');
-  const apiUrl=savedUrl||document.getElementById('ai-api-url').value.trim()||'https://api.openai.com/v1/chat/completions';
+  const key=keyInput||savedKey;
+
+  if(!key){showToast('Enter your API key first','warn');return}
+
+  // Save fields
+  if(keyInput) localStorage.setItem('ai_api_key',keyInput);
+  localStorage.setItem('ai_provider',provider);
 
   const problem=document.getElementById('ai-input').value.trim();
   if(!problem){showToast('Enter a CTF problem','warn');return}
 
-  // Save if entered
-  const urlInput=document.getElementById('ai-api-url').value.trim();
-  const keyInput=document.getElementById('ai-api-key').value.trim();
-  if(urlInput||keyInput){
-    localStorage.setItem('ai_api_url',urlInput||'https://api.openai.com/v1/chat/completions');
-    if(keyInput) localStorage.setItem('ai_api_key',keyInput);
-  }
-
-  let model=document.getElementById('ai-model').value;
-  if(model==='custom'){
-    model=document.getElementById('ai-custom-model').value.trim();
-    if(!model){showToast('Enter a custom model name','warn');return}
-  }
-
   const responseEl=document.getElementById('ai-response');
   responseEl.innerHTML=`<div class="auto-placeholder"><div class="ai-thinking">🤖 AI is analyzing your problem...</div></div>`;
 
-  const messages=[
-    {role:'system',content:AI_SYSTEM_PROMPT},
-    {role:'user',content:problem}
-  ];
+  try{
+    let content;
+    if(provider==='gemini'){
+      content=await callGemini(key,problem);
+    }else if(provider==='openai'){
+      content=await callOpenAI(key,problem);
+    }else if(provider==='custom'){
+      content=await callCustom(key,problem);
+    }
+    renderAiResponse(content||'No response from AI');
+  }catch(err){
+    responseEl.innerHTML=`<div class="ai-error">❌ Error: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function callOpenAI(key,problem){
+  const res=await fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+    body:JSON.stringify({
+      model:'gpt-4o-mini',
+      messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
+      max_tokens:4096,
+      temperature:0.3
+    })
+  });
+  if(!res.ok){
+    const err=await res.json().catch(()=>({}));
+    throw new Error(err.error?.message||`HTTP ${res.status}`);
+  }
+  const data=await res.json();
+  return data.choices?.[0]?.message?.content;
+}
+
+async function callGemini(key,problem){
+  const model='gemini-2.0-flash';
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const res=await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      contents:[{
+        parts:[{text:`${AI_SYSTEM_PROMPT}\n\n--- CTF PROBLEM ---\n\n${problem}\n\n--- RESPONSE ---\nProvide step-by-step solution. If you find a flag, output it as 🏴 FLAG: flag{...}`}]
+      }],
+      generationConfig:{
+        maxOutputTokens:8192,
+        temperature:0.3
+      }
+    })
+  });
+  if(!res.ok){
+    const err=await res.json().catch(()=>({}));
+    throw new Error(err.error?.message||`HTTP ${res.status}`);
+  }
+  const data=await res.json();
+  return data.candidates?.[0]?.content?.parts?.map(p=>p.text).join('\n')||null;
+}
+
+async function callCustom(key,problem){
+  const customUrl=localStorage.getItem('ai_custom_url')||document.getElementById('ai-custom-url')?.value.trim();
+  if(!customUrl){throw new Error('Enter a Custom API URL')}
+  let customModel=localStorage.getItem('ai_custom_model')||document.getElementById('ai-custom-model')?.value.trim();
+  if(!customModel) customModel='default';
 
   const headers={'Content-Type':'application/json'};
   if(key) headers['Authorization']=`Bearer ${key}`;
 
-  fetch(apiUrl,{
+  const res=await fetch(customUrl,{
     method:'POST',
     headers:headers,
     body:JSON.stringify({
-      model:model,
-      messages:messages,
+      model:customModel,
+      messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:problem}],
       max_tokens:4096,
       temperature:0.3
     })
-  }).then(async r=>{
-    if(!r.ok){
-      const err=await r.json().catch(()=>({}));
-      throw new Error(err.error?.message||`HTTP ${r.status}: ${r.statusText}`);
-    }
-    return r.json();
-  }).then(data=>{
-    const content=data.choices?.[0]?.message?.content||data.response||'No response from AI';
-    renderAiResponse(content);
-  }).catch(err=>{
-    responseEl.innerHTML=`<div class="ai-error">❌ Error: ${escapeHtml(err.message)}</div>`;
   });
+  if(!res.ok){
+    const err=await res.json().catch(()=>({}));
+    throw new Error(err.error?.message||`HTTP ${res.status}`);
+  }
+  const data=await res.json();
+  return data.choices?.[0]?.message?.content||data.response||null;
 }
 
 function renderAiResponse(content){
   const el=document.getElementById('ai-response');
-  // Escape HTML first, then handle code blocks
   let html=escapeHtml(content);
-  // Code blocks
   html=html.replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
-  // Inline code
   html=html.replace(/`([^`]+)`/g,'<code>$1</code>');
-  // Bold
   html=html.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
-  // Lines
   html=html.replace(/\n/g,'<br>');
   el.innerHTML=`<div class="ai-response-content">${html}</div>`;
 }
 
-// Load saved AI config on init + model toggle
+// Load saved AI config on init + provider/model toggles
 (function(){
   const savedKey=localStorage.getItem('ai_api_key');
-  const savedUrl=localStorage.getItem('ai_api_url');
+  const savedProvider=localStorage.getItem('ai_provider');
+  const savedCustomUrl=localStorage.getItem('ai_custom_url');
+  const savedCustomModel=localStorage.getItem('ai_custom_model');
   if(savedKey){const el=document.getElementById('ai-api-key');if(el) el.value=savedKey}
-  if(savedUrl){const el=document.getElementById('ai-api-url');if(el) el.value=savedUrl}
-  else{const el=document.getElementById('ai-api-url');if(el) el.value='https://api.openai.com/v1/chat/completions'}
-  // Model toggle
-  const sel=document.getElementById('ai-model');
-  const custField=document.getElementById('ai-custom-model-field');
-  if(sel&&custField){
-    sel.addEventListener('change',()=>{
-      custField.style.display=sel.value==='custom'?'block':'none';
-    });
+  if(savedProvider){const el=document.getElementById('ai-provider');if(el) el.value=savedProvider}
+  if(savedCustomUrl){const el=document.getElementById('ai-custom-url');if(el) el.value=savedCustomUrl}
+  if(savedCustomModel){const el=document.getElementById('ai-custom-model');if(el) el.value=savedCustomModel}
+
+  const sel=document.getElementById('ai-provider');
+  const custUrlField=document.getElementById('ai-custom-url-field');
+  const custModelField=document.getElementById('ai-custom-model-field');
+  const infoBox=document.getElementById('ai-provider-info');
+  function toggleFields(){
+    const v=sel?.value;
+    if(custUrlField) custUrlField.style.display=v==='custom'?'block':'none';
+    if(custModelField) custModelField.style.display=v==='custom'?'block':'none';
+    if(infoBox) infoBox.style.display=v==='gemini'?'block':'none';
+    const keyEl=document.getElementById('ai-api-key');
+    if(keyEl) keyEl.placeholder=v==='gemini'?'Enter your free Gemini API key from aistudio.google.com/apikey':v==='openai'?'sk-... your OpenAI API key':'API key (if required)';
   }
+  if(sel) sel.addEventListener('change',toggleFields);
+  toggleFields();
 })();
 
 // =============================================
