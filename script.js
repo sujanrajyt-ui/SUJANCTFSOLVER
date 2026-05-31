@@ -1800,43 +1800,53 @@ async function callOpenAI(key,problem){
 }
 
 async function callGemini(key,problem){
-  const model='gemini-2.0-flash';
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  const res=await apiFetch(url,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-goog-api-key':key},
-    body:JSON.stringify({
-      contents:[{
-        parts:[{text:`${AI_SYSTEM_PROMPT}\n\n--- CTF PROBLEM ---\n\n${problem}\n\n--- RESPONSE ---\nProvide step-by-step solution. If you find a flag, output it as 🏴 FLAG: flag{...}`}]
-      }],
-      safetySettings:[
-        {category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},
-        {category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},
-        {category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},
-        {category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}
-      ],
-      generationConfig:{
-        maxOutputTokens:8192,
-        temperature:0.1
+  const models=['gemini-2.0-flash','gemini-1.5-flash'];
+  let lastErr='';
+  for(const model of models){
+    try{
+      const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const res=await apiFetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-goog-api-key':key},
+        body:JSON.stringify({
+          contents:[{
+            parts:[{text:`${AI_SYSTEM_PROMPT}\n\n--- CTF PROBLEM ---\n\n${problem}\n\n--- RESPONSE ---\nProvide step-by-step solution. If you find a flag, output it as 🏴 FLAG: flag{...}`}]
+          }],
+          safetySettings:[
+            {category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},
+            {category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},
+            {category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},
+            {category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}
+          ],
+          generationConfig:{
+            maxOutputTokens:8192,
+            temperature:0.1
+          }
+        })
+      },90000);
+      const data=await res.json().catch(()=>({error:{message:'Failed to parse - possible network error'}}));
+      if(!res.ok||data.error){
+        lastErr=data.error?.message||data.error?.details||`HTTP ${res.status}`;
+        continue;
       }
-    })
-  },90000);
-  const data=await res.json().catch(()=>({error:{message:'Failed to parse response - possible network/CORS error'}}));
-  if(!res.ok||data.error){
-    const msg=data.error?.message||data.error?.details||`HTTP ${res.status}`;
-    throw new Error(msg);
+      if(!data.candidates||data.candidates.length===0){
+        lastErr=data.promptFeedback?.blockReason||'Empty response (no candidates)';
+        continue;
+      }
+      const candidate=data.candidates[0];
+      if(candidate.finishReason&&candidate.finishReason!=='STOP'&&candidate.finishReason!=='MAX_TOKENS'){
+        lastErr=`Response ${candidate.finishReason}: ${candidate.finishMessage||'content filtered'}`;
+        continue;
+      }
+      const text=candidate.content?.parts?.map(p=>p.text).join('\n');
+      if(!text){lastErr='Empty response - content blocked';continue}
+      return text;
+    }catch(e){
+      lastErr=e.message;
+      continue;
+    }
   }
-  if(!data.candidates||data.candidates.length===0){
-    if(data.promptFeedback?.blockReason) throw new Error(`Prompt blocked: ${data.promptFeedback.blockReason}`);
-    throw new Error('Empty response from Gemini (no candidates returned)');
-  }
-  const candidate=data.candidates[0];
-  if(candidate.finishReason&&candidate.finishReason!=='STOP'&&candidate.finishReason!=='MAX_TOKENS'){
-    throw new Error(`Response ${candidate.finishReason}: ${candidate.finishMessage||'content filtered'}`);
-  }
-  const text=candidate.content?.parts?.map(p=>p.text).join('\n');
-  if(!text) throw new Error('Empty response - content may have been blocked');
-  return text;
+  throw new Error(lastErr||'All Gemini models failed');
 }
 
 async function callCustom(key,problem){
@@ -1907,9 +1917,9 @@ function renderAiResponse(content){
       }else{
         keyEl.disabled=false;
         const phs={
+          gemini:'Free Gemini key at https://aistudio.google.com/apikey (no CC)',
           openrouter:'Get free key at https://openrouter.ai/keys',
           groq:'Get free key at https://console.groq.com/keys',
-          gemini:'Get free key at https://aistudio.google.com/apikey',
           openai:'sk-... your OpenAI API key',
           custom:'API key (if required)'
         };

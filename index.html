@@ -890,10 +890,10 @@ The solver will detect the type and try to decode/solve it."></textarea>
                 <div class="field">
                   <label>AI Provider</label>
                   <select id="ai-provider">
-                        <option value="openrouter" selected>🔄 OpenRouter (free models, needs own key)</option>
+                        <option value="gemini" selected>🦾 Google Gemini (free, 60 req/min, no CC needed)</option>
+                        <option value="openrouter">🔄 OpenRouter (free models, needs own key)</option>
                         <option value="backend">🚀 Backend AI (server keys, no key needed)</option>
                         <option value="groq">Groq (free, super fast)</option>
-                        <option value="gemini">Google Gemini (free tier, needs free key)</option>
                         <option value="openai">OpenAI (requires API key)</option>
                         <option value="custom">Custom API</option>
                       </select>
@@ -909,9 +909,9 @@ The solver will detect the type and try to decode/solve it."></textarea>
                   <div class="field" id="ai-backend-model-field" style="display:none">
                     <label>Backend AI Provider</label>
                     <select id="ai-backend-model">
+                      <option value="gemini">🦾 Gemini 2.0 Flash (free, 60 req/min)</option>
                       <option value="openrouter">🔄 OpenRouter (Llama 3.3 70B free)</option>
                       <option value="groq">⚡ Groq (Llama 3.3 70B fastest)</option>
-                      <option value="gemini">🦾 Gemini 2.0 Flash (free)</option>
                       <option value="openai">🤖 OpenAI GPT-4o-mini</option>
                     </select>
                     <span class="text-muted">Uses server-configured API keys — no key needed from you</span>
@@ -952,13 +952,13 @@ The solver will detect the type and try to decode/solve it."></textarea>
                     <input type="text" id="ai-custom-model" placeholder="e.g. llama3, deepseek-coder, mistral" />
                   </div>
                   <div class="ai-provider-info" id="ai-provider-info">
-                    💡 <strong>OpenRouter</strong> (default) — free signup at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>, get a free key, access 200+ models including GPT-4o, Claude 3.5, DeepSeek R1, Gemini Pro.
+                    🦾 <strong>Gemini</strong> (default) — free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>, 60 req/min, no credit card needed. Best free option for CTF.
                     <br><br>
-                    ⚡ <strong>Groq</strong> — completely free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>, fastest inference, great for code.
+                    💡 <strong>OpenRouter</strong> — free signup at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>, access 200+ models including GPT-4o, Claude 3.5, DeepSeek R1.
                     <br><br>
-                    ⚡ <strong>Gemini</strong> — free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>, 60 req/min.
+                    ⚡ <strong>Groq</strong> — free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>, fastest inference, great for code.
                     <br><br>
-                    🏆 <strong>Best setup:</strong> OpenRouter (DeepSeek R1 or Claude 3.5 Sonnet) → closest to Shannon AI levels.
+                    🏆 <strong>Best setup:</strong> Get a free Gemini key → paste it → done. For stronger results, use OpenRouter with DeepSeek R1 or Claude 3.5 Sonnet.
                   </div>
                 </div>
                 <div class="autosolver-input-area">
