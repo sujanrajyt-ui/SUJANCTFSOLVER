@@ -1545,6 +1545,16 @@ const AI_SYSTEM_PROMPT = `You're SUJANSCTFSOLVER — a CTF solver that doesn't m
 - Using the wrong protocol (HTTP vs HTTPS, TCP vs UDP)
 - Putting hostname after port (nc host port, not nc port host)
 
+## WINDOWS USERS — CRITICAL
+- nc does NOT exist on Windows. Never. Not natively. Do NOT suggest it.
+- If user is on Windows, give PowerShell alternatives:
+  * Test-NetConnection -Port 53060 -ComputerName host  (instead of nc)
+  * python -c "import socket;s=socket.socket();s.connect(('host',53060));print(s.recv(4096).decode())"
+  * ncat from https://nmap.org  (if they install it)
+- curl exists as curl.exe on Win10+. If they type "curl" it might fail — tell them "curl.exe"
+- nmap needs manual install from https://nmap.org
+- python may be "python" or "python3" or "py" depending on install
+
 ## CRYPTOGRAPHY — ACTUAL APPROACH
 - RSA: n,e,c given? Factor n with factordb.com first. Wiener if e is huge. Broadcast if same e multiple times. Don't try to factor 2048-bit by hand — it's not happening.
 - XOR: Single-byte? Brute 0-255, look for English. Multi-byte? Use frequency analysis on key length. Crib drag if you know plaintext.
@@ -1915,7 +1925,7 @@ async function autoAISolve(){
   }
 
   const {os,isWin}=getOSInfo();
-  if(isWin) problem='[USER IS ON WINDOWS. IMPORTANT: nc does NOT exist natively. Use Test-NetConnection, ncat, or suggest python one-liner. Adapt ALL shell commands to Windows equivalents.]\n\n'+problem;
+  if(isWin) problem='[USER IS ON WINDOWS — CRITICAL: nc does NOT exist on Windows. Never suggest nc. Use Test-NetConnection -Port PORT -ComputerName HOST or python one-liner. curl may need "curl.exe" not "curl". nmap needs install from nmap.org. Adapt EVERY command.]\n\n'+problem;
 
   const responseEl=document.getElementById('ai-response');
   responseEl.innerHTML=`<div class="auto-placeholder"><div class="ai-thinking">🤖 AI is analyzing your problem...</div></div>`;
@@ -2205,12 +2215,23 @@ function terminalExecute(){
   execCommand(cmd);
 }
 
+function isLocalDev(){
+  return location.hostname==='localhost'||location.hostname==='127.0.0.1';
+}
+
 function execCommand(cmd){
+  if(!isLocalDev()){
+    appendTermLine('[terminal] ⚠️ Terminal commands only work when running the local dev server.','term-warn');
+    appendTermLine('[terminal] Run "node server.js" on your machine and access http://localhost:3000','term-warn');
+    appendTermLine('[terminal] On Vercel, use "!ai <question>" or "!explain" instead.','term-ai');
+    return;
+  }
   const endpoints=termMode==='local'?['/api/local/exec','/api/kali/exec']:['/api/kali/exec','/api/local/exec'];
   tryEndpoint(0);
   function tryEndpoint(idx){
     if(idx>=endpoints.length){
-      appendTermLine('[terminal] No execution endpoint available','term-error');
+      appendTermLine('[terminal] No execution endpoint available. Is the server running?','term-error');
+      appendTermLine('[terminal] Run "node server.js" and refresh.','term-warn');
       return;
     }
     fetch(endpoints[idx],{
@@ -2226,6 +2247,23 @@ function execCommand(cmd){
       if(d.stderr) appendTermLine(d.stderr,'term-error');
       if(!d.stdout&&!d.stderr) appendTermLine('[empty output]','term-output');
       appendTermLine(`[exit code: ${d.return_code??'?'}]`,'term-muted');
+      const {isWin}=getOSInfo();
+      if(isWin&&(d.stderr||'').match(/not (recognized|found)|not recognized as|is not recognized/i)){
+        const cmdName=cmd.split(/\s+/)[0].toLowerCase();
+        const alt={
+          nc:'Use Test-NetConnection -Port <port> <host> in PowerShell, or install ncat from https://nmap.org',
+          nmap:'Download from https://nmap.org/download.html',
+          curl:'Use curl.exe (ships with Win10+) or Invoke-WebRequest in PowerShell',
+          ping:'ping -n <count> <host> works — make sure you used -n not -c',
+          grep:'Use findstr in PowerShell, or install grep via Git Bash/WSL',
+          wget:'Use curl.exe or Invoke-WebRequest',
+          python:'Install from https://python.org, or use python3/python if you have it',
+          ssh:'ssh comes with Windows 10+ — try "ssh" directly',
+          nslookup:'nslookup works on Windows, try without extra flags'
+        };
+        if(alt[cmdName]) appendTermLine(`💡 Windows tip: ${alt[cmdName]}`,'term-warn');
+        else appendTermLine(`💡 Windows tip: "${cmdName}" is not a recognized command. Try installing it or use the Windows equivalent.`,'term-warn');
+      }
     }).catch(e=>{
       if(idx<endpoints.length-1) tryEndpoint(idx+1);
       else appendTermLine(`Error: ${e.message}`,'term-error');
@@ -2239,7 +2277,7 @@ function terminalAI(prompt){
     appendTermLine('[AI] Input truncated to 120K characters','term-warn');
   }
   const {os,isWin}=getOSInfo();
-  if(isWin) prompt='[USER IS ON WINDOWS. Adapt all commands! nc/curl/nmap may not exist natively. Suggest Windows alternatives.]\n\n'+prompt;
+  if(isWin) prompt='[USER IS ON WINDOWS — nc DOES NOT EXIST. Use Test-NetConnection or python one-liner instead. curl.exe not curl. Adapt all commands.]\n\n'+prompt;
   appendTermLine('[AI] Querying AI...','term-muted');
   const provider=document.getElementById('ai-provider')?.value||'backend';
   const key=localStorage.getItem('ai_api_key')||'';
