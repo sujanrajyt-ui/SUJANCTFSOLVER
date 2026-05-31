@@ -51,7 +51,7 @@ const PROVIDERS = {
   openrouter: {
     baseUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
-    fallbackModels: ['nousresearch/hermes-3-llama-3.1-405b:free', 'deepseek/deepseek-v4-flash:free', 'qwen/qwen3-coder:free', 'liquid/lfm-2.5-1.2b-thinking:free'],
+    fallbackModels: ['liquid/lfm-2.5-1.2b-thinking:free', 'deepseek/deepseek-v4-flash:free', 'nousresearch/hermes-3-llama-3.1-405b:free', 'qwen/qwen3-coder:free'],
     envKey: 'OPENROUTER_API_KEY',
     headers: (key) => ({
       'Content-Type': 'application/json',
