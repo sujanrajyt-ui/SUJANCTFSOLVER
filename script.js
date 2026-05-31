@@ -330,7 +330,7 @@ function rsaFactor(){
   const out=document.getElementById('rsa-output');
   out.value+='[!] FactorDB query requires Kali server connection\n';
   out.value+='[!] Attempting local trial division (small factors)...\n';
-  const bn=BigInt(n);
+  const bn=toBigInt(n);
   if(bn<10000000000000000000n){
     const factors=rsafactor(bn);
     if(factors){
@@ -349,13 +349,13 @@ function rsaDecrypt(){
   const out=document.getElementById('rsa-output');
   if(!n||!c){out.value='[-] n and c required\n';return}
   try{
-    const bn=BigInt(n),bc=BigInt(c);
+    const bn=toBigInt(n),bc=toBigInt(c);
     if(p&&q){
-      const bp=BigInt(p),bq=BigInt(q);
+      const bp=toBigInt(p),bq=toBigInt(q);
       const phi=(bp-1n)*(bq-1n);
-      const be=BigInt(e||'65537');
+      const be=toBigInt(e||'65537');
       let bd;
-      if(d) bd=BigInt(d);
+      if(d) bd=toBigInt(d);
       else{
         bd=modInverse(be,phi);
         out.value+=`[+] d = ${bd}\n`;
@@ -367,7 +367,7 @@ function rsaDecrypt(){
       out.value+=`[+] Plaintext (int): ${pt}\n`;
       out.value+=`[+] Plaintext (text): ${plain||'(non-printable)'}\n`;
     }else if(e&&d){
-      const be=BigInt(e),bd=BigInt(d);
+      const be=toBigInt(e),bd=toBigInt(d);
       const pt=modPow(bc,bd,bn);
       out.value+=`[+] Plaintext (int): ${pt}\n`;
     }else{
@@ -968,9 +968,9 @@ function pwnFindOffset(){
   let offset=pattern.indexOf(val.replace('0x',''));
   if(offset===-1){
     try{
-      const bytes=val.startsWith('0x')?BigInt(val):null;
+      const bytes=val.startsWith('0x')?toBigInt(val):null;
       if(bytes){
-        const str=String.fromCharCode(...Array.from({length:8},(_,i)=>Number((bytes>>BigInt(i*8))&0xffn)));
+        const str=String.fromCharCode(...Array.from({length:8},(_,i)=>Number((bytes>>toBigInt(i*8))&0xffn)));
         offset=pattern.indexOf(str);
         if(offset===-1){
           const rev=Array.from(str).reverse().join('');
@@ -1039,15 +1039,15 @@ function autoSolve(){
     if(nMatch&&cMatch){
       let n=nMatch[1],c=cMatch[1],e=eMatch?eMatch[1]:'65537';
       addStep('🔐 RSA Challenge Detected',`n = ${n}\ne = ${e}\nc = ${c}`,'info');
-      const bn=BigInt(n);
+      const bn=toBigInt(n);
       if(bn<10000000000000000000n){
         const factors=rsafactor(bn);
         if(factors){
           addStep('✅ RSA Factored (small n)',`p = ${factors[0]}\nq = ${factors[1]}`,'success');
           const phi=(factors[0]-1n)*(factors[1]-1n);
-          const be=BigInt(e);
+          const be=toBigInt(e);
           const bd=modInverse(be,phi);
-          const bc=BigInt(c);
+          const bc=toBigInt(c);
           const pt=modPow(bc,bd,bn);
           const plain=bigIntToText(pt);
           let out=`d = ${bd}\nplain (int) = ${pt}`;
@@ -1671,9 +1671,9 @@ function bytesToHex(bytes){
 function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function BigInt(v){
+function totoBigInt(v){
   if(typeof v==='bigint') return v;
-  try{return BigInt(v)}catch{return 0n}
+  try{return globalThis.toBigInt(v)}catch{return 0n}
 }
 
 // =============================================
