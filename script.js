@@ -1381,8 +1381,8 @@ function autoSolve(){
           return out.length>1&&checkPrintable(out)?out:null}},
       {name:'Hex',test:s=>/^[a-fA-F0-9]+$/.test(s)&&s.length>4&&s.length%2===0,
         decode:s=>{const out=String.fromCharCode(...s.match(/.{1,2}/g).map(b=>parseInt(b,16)));return checkPrintable(out)?out:null}},
-      {name:'Binary',test:s=>/^[01]+$/.test(s)&&s.length>8&&s.length%8===0,
-        decode:s=>{const out=s.match(/.{1,8}/g).map(b=>String.fromCharCode(parseInt(b,2))).join('');return checkPrintable(out)?out:null}},
+      {name:'Binary',test:s=>/^[01\s]+$/.test(s)&&(s.replace(/\s/g,'').length>8)&&(s.replace(/\s/g,'').length%8===0),
+         decode:s=>{const cleaned=s.replace(/\s+/g,'');const out=cleaned.match(/.{1,8}/g).map(b=>String.fromCharCode(parseInt(b,2))).join('');return checkPrintable(out)?out:null}},
       {name:'Decimal ASCII',test:s=>/^(\d{2,3}\s?){3,}$/.test(s.trim()),
          decode:s=>{const nums=s.trim().split(/\s+/).map(Number);if(nums.some(n=>n<32||n>126))return null;return String.fromCharCode(...nums)}},
        {name:'DNA',test:s=>/^[ACGT]+$/i.test(s)&&s.length%2===0&&s.length>=4,
@@ -1405,8 +1405,8 @@ function autoSolve(){
            for(const w of words){if(natoMap[w]) out+=natoMap[w];else return null;}
            return out.length>0&&checkPrintable(out)?out:null;
          }},
-      {name:'ROT13',test:s=>(s.match(/[a-zA-Z]/g)||[]).length>4,
-        decode:s=>{const r=rotShift(s,13);return/\b(the|this|flag|ctf|is|are|was|for|and|not|you|can|key|has|decrypt|encrypt|cipher|text|message|secret|password|admin|user|login|base64|hex|binary|rot|xor)\b/i.test(r)?r:null}},
+      {name:'ROT13',test:s=>(s.match(/[a-zA-Z]/g)||[]).length>1,
+         decode:s=>{const r=rotShift(s,13);return checkPrintable(r)?r:null}},
       {name:'ROT47',test:s=>(s.match(/[!-~]/g)||[]).length>4,
         decode:s=>s.replace(/[!-~]/g,c=>String.fromCharCode(33+(c.charCodeAt(0)-33+47)%94))},
       {name:'Atbash',test:s=>(s.match(/[a-zA-Z]/g)||[]).length>4,
