@@ -196,6 +196,54 @@ function rotShift(s,n){
     return String.fromCharCode((c.charCodeAt(0)-base+n+26)%26+base);
   });
 }
+
+// Quick decode: tries every decoder on input, returns array of {decoder, output, hasFlag}
+function quickDecode(input){
+  const results=[];
+  const flagRegex=/(?:picoCTF|flag|CTF|FLAG|HTB)\{[^}]+\}/i;
+  // Base64
+  if(/^[A-Za-z0-9+/]+={0,2}$/.test(input)&&input.length%4===0&&input.length>=4){
+    try{
+      const d=atob(input);
+      if(/[ -~]+/.test(d)) results.push({decoder:'Base64',output:d,hasFlag:flagRegex.test(d)});
+    }catch(e){}
+  }
+  // Hex
+  if(/^[0-9a-fA-F]+$/.test(input)&&input.length%2===0&&input.length>=2){
+    try{
+      const d=input.match(/.{1,2}/g).map(b=>String.fromCharCode(parseInt(b,16))).join('');
+      if(/[ -~]+/.test(d)) results.push({decoder:'Hex',output:d,hasFlag:flagRegex.test(d)});
+    }catch(e){}
+  }
+  // Binary (with or without spaces)
+  const cleanBin=input.replace(/\s+/g,'');
+  if(/^[01]+$/.test(cleanBin)&&cleanBin.length>=8&&cleanBin.length%8===0){
+    const d=cleanBin.match(/.{1,8}/g).map(b=>String.fromCharCode(parseInt(b,2))).join('');
+    if(/[ -~]+/.test(d)) results.push({decoder:'Binary',output:d,hasFlag:flagRegex.test(d)});
+  }
+  // ROT13
+  if(/[a-zA-Z]/.test(input)&&input.replace(/[^a-zA-Z]/g,'').length>=2){
+    const d=rotShift(input,13);
+    results.push({decoder:'ROT13',output:d,hasFlag:flagRegex.test(d)});
+  }
+  // ROT-N (try all 1-25)
+  if(/[a-zA-Z]/.test(input)){
+    for(let n=1;n<=25;n++){
+      if(n===13) continue;
+      const d=rotShift(input,n);
+      if(flagRegex.test(d)){
+        results.push({decoder:'ROT'+n,output:d,hasFlag:true});
+        break;
+      }
+    }
+  }
+  // Reversed
+  if(input.length>=4){
+    const d=input.split('').reverse().join('');
+    if(/[ -~]+/.test(d)) results.push({decoder:'Reversed',output:d,hasFlag:flagRegex.test(d)});
+  }
+  return results;
+}
 function rotBruteForce(){
   const inp=document.getElementById('rot-input').value;
   if(!inp){showToast('Enter input first','warn');return}
@@ -2370,14 +2418,46 @@ async function solveChallenge(){
 
   solveRenderLog();
 
-  // Phase 5: Summary
+  // Phase 5: Summary — aggressive flag search across ALL findings
+  const flagRegex=/(?:picoCTF|flag|CTF|FLAG|HTB|TUCTF|uiuctf)\{[^}]+\}/gi;
   const allFlags=[];
-  solveLog.forEach(e=>{const m=e.detail.match(/(picoCTF|flag|CTF|FLAG)\{[^}]+\}/i);if(m) allFlags.push(m[0])});
-  if(allFlags.length>0){
-    solveLogMsg('🏴 SOLVED! Flags found: '+allFlags.length,allFlags.join('\n'),'flag');
+  const allDecoded=[];
+
+  // Search through every entry in solveLog for flags
+  solveLog.forEach(e=>{
+    if(!e.detail) return;
+    // Search the detail string
+    const matches=e.detail.match(flagRegex);
+    if(matches) matches.forEach(m=>allFlags.push(m));
+    // Also search the step name in case flag is there
+    const stepMatches=(e.step||'').match(flagRegex);
+    if(stepMatches) stepMatches.forEach(m=>allFlags.push(m));
+  });
+
+  // Also search through decodedResults for flags
+  decodedResults.forEach(r=>{
+    if(r.output){
+      const matches=r.output.match(flagRegex);
+      if(matches){
+        matches.forEach(m=>allFlags.push(m));
+        allDecoded.push(`${r.type}: ${r.output.substring(0,200)}`);
+      } else {
+        allDecoded.push(`${r.type}: ${r.output.substring(0,200)}`);
+      }
+    }
+  });
+
+  // Deduplicate flags
+  const uniqueFlags=[...new Set(allFlags)];
+
+  if(uniqueFlags.length>0){
+    solveLogMsg('🏴 SOLVED! Flag'+(uniqueFlags.length>1?'s':'')+' found: '+uniqueFlags.length,uniqueFlags.join('\n'),'flag');
+  }else if(allDecoded.length>0){
+    // No flag pattern found, but we have decoded data — show it all
+    solveLogMsg('🔍 Decoded values found (no flag pattern detected — inspect manually):',allDecoded.join('\n\n'),'warn');
+    solveLogMsg('💡 The decoded text might contain a flag without { } brackets. Look for words like "flag", "picoCTF", or hex/base64 patterns.','info');
   }else{
-    solveLogMsg('ℹ️ No flag detected in decoded data. The server may require interaction.','Try connecting manually with python/pwntools or use the AI to analyze further.','info');
-    solveLogMsg('💡 Tip: Install pwntools and run: python -c "from pwn import *; io=remote(\''+(match?match[1]:'host')+'\','+(match?match[2]:'port')+'); print(io.recvall().decode())"  then pipe back responses.','','info');
+    solveLogMsg('ℹ️ No decodable data found.','If this is a network challenge, run: nc '+(match?match[1]+' '+match[2]:'host port')+' locally, then paste the output in the orange box above.','info');
   }
   solveRenderLog();
   solveLogMsg('✅ Solver complete','','success');
