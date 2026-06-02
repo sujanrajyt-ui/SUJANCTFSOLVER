@@ -19,11 +19,26 @@ module.exports = async (req, res) => {
   const host = (body.host || '').trim();
   const port = parseInt(body.port) || 0;
   const sendData = body.send || '';
-  const timeout = Math.min(parseInt(body.timeout) || 10000, 30000);
+  const timeout = Math.min(parseInt(body.timeout) || 20000, 25000);
 
   if (!host || !port) return send(400, { error: 'host and port required' });
 
-  return new Promise(resolve => {
+  // Try connection with retry
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const data = await tryConnect(host, port, sendData, timeout);
+      return send(200, { success: true, data: data, attempts: attempt + 1 });
+    } catch (e) {
+      if (attempt === 1) {
+        return send(200, { success: false, data: '', error: e.message, attempts: 2 });
+      }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+};
+
+function tryConnect(host, port, sendData, timeout) {
+  return new Promise((resolve, reject) => {
     const sock = new net.Socket();
     let result = '';
     let ended = false;
@@ -32,8 +47,8 @@ module.exports = async (req, res) => {
       if (ended) return;
       ended = true;
       sock.destroy();
-      if (err) return resolve(send(200, { success: true, data: result || '', note: 'connection error: ' + err.message }));
-      resolve(send(200, { success: true, data: result }));
+      if (err) return reject(err);
+      resolve(result);
     };
 
     sock.setTimeout(timeout);
@@ -50,4 +65,4 @@ module.exports = async (req, res) => {
     sock.on('error', e => done(e));
     sock.on('timeout', () => done(new Error('timeout after ' + timeout + 'ms')));
   });
-};
+}

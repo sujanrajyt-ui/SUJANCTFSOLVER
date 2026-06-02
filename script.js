@@ -1109,7 +1109,27 @@ function autoSolve(){
       {name:'Binary',test:s=>/^[01]+$/.test(s)&&s.length>8&&s.length%8===0,
         decode:s=>{const out=s.match(/.{1,8}/g).map(b=>String.fromCharCode(parseInt(b,2))).join('');return checkPrintable(out)?out:null}},
       {name:'Decimal ASCII',test:s=>/^(\d{2,3}\s?){3,}$/.test(s.trim()),
-        decode:s=>{const nums=s.trim().split(/\s+/).map(Number);if(nums.some(n=>n<32||n>126))return null;return String.fromCharCode(...nums)}},
+         decode:s=>{const nums=s.trim().split(/\s+/).map(Number);if(nums.some(n=>n<32||n>126))return null;return String.fromCharCode(...nums)}},
+       {name:'DNA',test:s=>/^[ACGT]+$/i.test(s)&&s.length%2===0&&s.length>=4,
+         decode:s=>{
+           const bits=s.toUpperCase().split('').map(c=>{switch(c){case'A':return'00';case'C':return'01';case'G':return'10';case'T':return'11';}}).join('');
+           let out='';for(let i=0;i<bits.length;i+=8){const byte=bits.substring(i,i+8);if(byte.length===8) out+=String.fromCharCode(parseInt(byte,2));}
+           return out.length>0&&checkPrintable(out)?out:null;
+         }},
+       {name:'Whitespace',test:s=>/^[ \t\n]+$/.test(s)&&s.length>=8,
+         decode:s=>{
+           let binary='';for(let i=0;i<s.length;i++){if(s[i]===' ')binary+='0';else if(s[i]==='\t')binary+='1';}
+           let out='';for(let i=0;i<binary.length;i+=8){const byte=binary.substring(i,i+8);if(byte.length===8) out+=String.fromCharCode(parseInt(byte,2));}
+           return out.length>0&&checkPrintable(out)?out:null;
+         }},
+       {name:'NATO',test:s=>/^([A-Z][a-z]+(?:\s|$))+$/.test(s)&&s.length>=10,
+         decode:s=>{
+           const natoMap={'Alpha':'A','Bravo':'B','Charlie':'C','Delta':'D','Echo':'E','Foxtrot':'F','Golf':'G','Hotel':'H','India':'I','Juliett':'J','Kilo':'K','Lima':'L','Mike':'M','November':'N','Oscar':'O','Papa':'P','Quebec':'Q','Romeo':'R','Sierra':'S','Tango':'T','Uniform':'U','Victor':'V','Whiskey':'W','Xray':'X','Yankee':'Y','Zulu':'Z'};
+           let out='';let words=s.match(/[A-Z][a-z]+/g);
+           if(!words) return null;
+           for(const w of words){if(natoMap[w]) out+=natoMap[w];else return null;}
+           return out.length>0&&checkPrintable(out)?out:null;
+         }},
       {name:'ROT13',test:s=>(s.match(/[a-zA-Z]/g)||[]).length>4,
         decode:s=>{const r=rotShift(s,13);return/\b(the|this|flag|ctf|is|are|was|for|and|not|you|can|key|has|decrypt|encrypt|cipher|text|message|secret|password|admin|user|login|base64|hex|binary|rot|xor)\b/i.test(r)?r:null}},
       {name:'ROT47',test:s=>(s.match(/[!-~]/g)||[]).length>4,
