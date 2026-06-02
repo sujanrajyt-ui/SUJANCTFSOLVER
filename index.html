@@ -478,6 +478,11 @@
             <button class="tab" data-tab="web-dns">DNS Lookup</button>
             <button class="tab" data-tab="web-headers">HTTP Headers</button>
             <button class="tab" data-tab="web-sqli">SQLi Test</button>
+            <button class="tab" data-tab="web-ssti">SSTI Test</button>
+            <button class="tab" data-tab="web-lfi">LFI Test</button>
+            <button class="tab" data-tab="web-xss">XSS Payloads</button>
+            <button class="tab" data-tab="web-cmdi">Command Injection</button>
+            <button class="tab" data-tab="web-fetch">Custom Request</button>
           </div>
           <div class="tool-panels">
             <div class="tool-panel active" id="panel-web-url">
@@ -543,6 +548,87 @@
               </div>
               <div class="tool-actions">
                 <button class="btn" onclick="webSqliTest()">Test Payloads</button>
+                <button class="btn" onclick="webSqliAttack()">🚀 Live Attack (via proxy)</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-web-ssti">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Target URL with parameter</label>
+                  <input type="text" id="web-ssti-input" placeholder="http://target.com/page?name=test" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Result (live test via proxy)</label>
+                  <textarea id="web-ssti-output" rows="10" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webSstiTest()">🚀 Test SSTI Payloads</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-web-lfi">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Target URL with file parameter</label>
+                  <input type="text" id="web-lfi-input" placeholder="http://target.com/page?file=test" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Result (live test via proxy)</label>
+                  <textarea id="web-lfi-output" rows="10" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webLfiTest()">🚀 Test LFI Payloads</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-web-xss">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>XSS Payload Library</label>
+                  <textarea id="web-xss-input" rows="4" placeholder="Optional: target context (e.g., img-src, script)"></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Generated XSS Payloads</label>
+                  <textarea id="web-xss-output" rows="10" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webXssGen()">Generate Payloads</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-web-cmdi">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Target URL with command parameter</label>
+                  <input type="text" id="web-cmdi-input" placeholder="http://target.com/ping?host=127.0.0.1" />
+                </div>
+                <div class="tool-input-group">
+                  <label>Result (live test via proxy)</label>
+                  <textarea id="web-cmdi-output" rows="10" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webCmdiTest()">🚀 Test Command Injection</button>
+              </div>
+            </div>
+            <div class="tool-panel" id="panel-web-fetch">
+              <div class="tool-row">
+                <div class="tool-input-group">
+                  <label>Request (JSON)</label>
+                  <textarea id="web-fetch-input" rows="6" placeholder='{"url":"https://target.com","method":"GET","headers":{"Cookie":"test=1"},"body":"","timeout":15000}'></textarea>
+                </div>
+                <div class="tool-input-group">
+                  <label>Response</label>
+                  <textarea id="web-fetch-output" rows="12" readonly></textarea>
+                </div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="webCustomFetch('GET')">GET</button>
+                <button class="btn" onclick="webCustomFetch('POST')">POST</button>
+                <button class="btn" onclick="webCustomFetch('PUT')">PUT</button>
+                <button class="btn" onclick="webCustomFetch('DELETE')">DELETE</button>
+                <button class="btn" onclick="webCustomFetch('HEAD')">HEAD</button>
+                <button class="btn" onclick="webCustomFetch('OPTIONS')">OPTIONS</button>
               </div>
             </div>
           </div>
